@@ -1,0 +1,216 @@
+/* 
+  Marq Lab - Minimalist, Clean & High-Performance Design System
+*/
+
+:root {
+    --card-bg-light: rgba(255, 255, 255, 0.95);
+    --card-border-light: rgba(226, 232, 240, 0.9);
+    --card-shadow-light: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+}
+
+.dark {
+    --card-bg-dark: rgba(17, 24, 39, 0.75);
+    --card-border-dark: rgba(31, 41, 61, 0.7);
+    --card-shadow-dark: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+/* Glass Panels */
+.glass-panel {
+    background: var(--card-bg-light);
+    border: 1px solid var(--card-border-light);
+    box-shadow: var(--card-shadow-light);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    transition: all 0.2s ease-in-out;
+}
+
+.dark .glass-panel {
+    background: var(--card-bg-dark);
+    border: 1px solid var(--card-border-dark);
+    box-shadow: var(--card-shadow-dark);
+}
+
+/* Glass Modal */
+.glass-modal {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+}
+
+.dark .glass-modal {
+    background: #111827;
+    border: 1px solid #1f293d;
+}
+
+/* Header Navigation Tabs */
+.nav-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 10px;
+    color: #64748b;
+    transition: all 0.15s ease;
+}
+
+.dark .nav-tab {
+    color: #94a3b8;
+}
+
+.nav-tab:hover {
+    color: #0f172a;
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.dark .nav-tab:hover {
+    color: #f8fafc;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-tab.active {
+    color: #4f46e5;
+    background: rgba(79, 70, 229, 0.08);
+}
+
+.dark .nav-tab.active {
+    color: #818cf8;
+    background: rgba(99, 102, 241, 0.15);
+}
+
+/* Sidebar Drawer Links */
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    color: #64748b;
+    transition: all 0.15s ease;
+}
+
+.dark .sidebar-link {
+    color: #94a3b8;
+}
+
+.sidebar-link:hover {
+    color: #0f172a;
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.dark .sidebar-link:hover {
+    color: #f8fafc;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-link.active {
+    color: #4f46e5;
+    background: rgba(79, 70, 229, 0.08);
+    font-weight: 700;
+}
+
+.dark .sidebar-link.active {
+    color: #818cf8;
+    background: rgba(99, 102, 241, 0.15);
+}
+
+/* Quick Suggestion Chips */
+.quick-chip {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    background: rgba(99, 102, 241, 0.06);
+    color: #4f46e5;
+    border: 1px solid rgba(99, 102, 241, 0.18);
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.dark .quick-chip {
+    background: rgba(99, 102, 241, 0.12);
+    color: #a5b4fc;
+    border-color: rgba(99, 102, 241, 0.25);
+}
+
+.quick-chip:hover {
+    background: #4f46e5;
+    color: #ffffff;
+    border-color: #4f46e5;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    background: #334155;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}
+
+/* Smooth Table Hover & Transitions */
+tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+tbody tr:hover {
+    background-color: rgba(99, 102, 241, 0.02);
+}
+
+.dark tbody tr:hover {
+    background-color: rgba(99, 102, 241, 0.05);
+}
+
+/* Professional Minimalist Badges (Sem emojis) */
+.badge-score-high {
+    background: rgba(99, 102, 241, 0.1);
+    color: #4f46e5;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+.dark .badge-score-high {
+    background: rgba(99, 102, 241, 0.15);
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.badge-score-med {
+    background: rgba(245, 158, 11, 0.1);
+    color: #d97706;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.dark .badge-score-med {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-score-normal {
+    background: rgba(148, 163, 184, 0.1);
+    color: #64748b;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.dark .badge-score-normal {
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+}
