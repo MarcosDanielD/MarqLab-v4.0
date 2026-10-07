@@ -1,6 +1,7 @@
 """
 Nexus Lead Pro - B2B Growth Engine & Lead Generation Dashboard.
 Flask application server with SSE streaming, REST API, Chart data, and CRM actions.
+
 """
 
 import os
@@ -142,46 +143,35 @@ def get_dashboard_kpis():
     campaign_id = request.args.get("campaign_id", type=int)
     kpis = database.get_kpis(campaign_id)
 
-    # 1. Chart Status Distribution
+    # Calculate distribution for Chart 1 (Status Distribution)
     status_chart = {
-        "labels": ["Sem Site", "Requer Modernização", "Site Ativo"],
+        "labels": ["Sem Site (Prioridade Crítica)", "Precisa de Modernização", "Site Ativo (Baixa Prioridade)"],
         "data": [
             kpis["sem_site"],
             kpis["modernizacao"],
             max(0, kpis["total_leads"] - kpis["sem_site"] - kpis["modernizacao"]),
         ],
-        "colors": ["#f43f5e", "#f59e0b", "#10b981"]
+        "colors": ["#ef4444", "#f59e0b", "#10b981"]
     }
 
-    # 2. Sales Funnel Chart (Novos -> Contatados -> Agendados -> Fechados)
-    leads = database.get_leads(campaign_id=campaign_id, limit=2000)
-    contatados = sum(1 for l in leads if l.get("crm_status") in ["Contatado", "Em Negociação"])
-    agendados = sum(1 for l in leads if l.get("crm_status") == "Reunião Agendada" or (l.get("scheduled_at") and l.get("scheduled_at").strip()))
-    fechados = sum(1 for l in leads if l.get("crm_status") == "Fechado (R$ 1.000)")
-
-    funnel_chart = {
-        "labels": [
-            "1. Leads Minerados",
-            "2. Oportunidades (Sem Site/Ruim)",
-            "3. Em Contato / Pitch",
-            "4. Reuniões Agendadas",
-            "5. Contratos Fechados"
-        ],
-        "data": [
-            kpis["total_leads"],
-            kpis["sem_site"] + kpis["modernizacao"],
-            contatados,
-            agendados,
-            fechados
-        ],
-        "colors": ["#6366f1", "#f59e0b", "#3b82f6", "#8b5cf6", "#10b981"]
-    }
+    # Fetch top leads for Maturity Scatter/Bubble chart
+    all_leads = database.get_leads(campaign_id=campaign_id, limit=100)
+    maturity_chart = []
+    for l in all_leads:
+        maturity_chart.append({
+            "name": l["name"],
+            "x": l["reviews_count"],   # Total de Avaliações
+            "y": l["rating"],          # Nota do Google (0 a 5.0)
+            "score": l["lead_score"],
+            "status": l["qualification_status"],
+            "temperature": l["lead_temperature"],
+        })
 
     return jsonify({
         "success": True,
         "kpis": kpis,
         "status_chart": status_chart,
-        "funnel_chart": funnel_chart,
+        "maturity_chart": maturity_chart,
     })
 
 
@@ -215,13 +205,6 @@ def schedule_lead_meeting(lead_id):
     return jsonify({"success": True, "lead_id": lead_id, "scheduled_at": scheduled_at})
 
 
-@app.route("/api/lead/<int:lead_id>/unschedule", methods=["POST"])
-def unschedule_lead_meeting(lead_id):
-    database.unschedule_meeting(lead_id)
-    database.add_log(f"Reunião do Lead #{lead_id} desmarcada.", "INFO")
-    return jsonify({"success": True, "lead_id": lead_id})
-
-
 @app.route("/api/meetings", methods=["GET"])
 def list_meetings():
     meetings = database.get_scheduled_meetings()
@@ -232,7 +215,6 @@ def list_meetings():
             if clean_phone else ""
         )
     return jsonify({"success": True, "total": len(meetings), "meetings": meetings})
-
 
 
 
