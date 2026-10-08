@@ -288,6 +288,11 @@ async function loadOperators() {
     }
 }
 
+function getActiveOperatorPermission() {
+    const currentOp = appState.operators.find(o => o.name === appState.activeOperator);
+    return currentOp ? (currentOp.permission_level || 'SDR') : (appState.activeOperator === 'Marcos' ? 'ADMIN' : 'SDR');
+}
+
 function updateActiveOperatorUi(name) {
     const headerOp = document.getElementById('headerOperatorName');
     if (headerOp) headerOp.innerText = name;
@@ -295,10 +300,18 @@ function updateActiveOperatorUi(name) {
     const avatar = document.getElementById('sidebarOperatorAvatar');
     if (avatar) avatar.innerText = name.charAt(0).toUpperCase();
 
-    const roleSpan = document.getElementById('sidebarOperatorRole');
-    if (roleSpan) {
-        const currentOp = appState.operators.find(o => o.name === name);
-        roleSpan.innerText = currentOp ? currentOp.role : 'SDR / Vendas';
+    const currentOp = appState.operators.find(o => o.name === name);
+    const permLevel = currentOp ? (currentOp.permission_level || 'SDR') : (name === 'Marcos' ? 'ADMIN' : 'SDR');
+
+    const permBadge = document.getElementById('headerOperatorPermBadge');
+    if (permBadge) {
+        if (permLevel === 'ADMIN') {
+            permBadge.innerText = '👑 Gestor';
+            permBadge.className = 'ml-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 uppercase';
+        } else {
+            permBadge.innerText = '💼 SDR';
+            permBadge.className = 'ml-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase';
+        }
     }
 }
 
@@ -306,7 +319,8 @@ function changeActiveOperator(opName) {
     appState.activeOperator = opName;
     localStorage.setItem('marq_active_operator', opName);
     updateActiveOperatorUi(opName);
-    showToast(`Operador alterado para ${opName}`, 'info');
+    const perm = getActiveOperatorPermission();
+    showToast(`Operador alterado para ${opName} (${perm === 'ADMIN' ? 'Gestor' : 'SDR'})`, 'info');
 }
 
 function openTeamModal() {
@@ -329,19 +343,27 @@ function renderOperatorsModalList() {
 
     container.innerHTML = appState.operators.map(op => {
         const isCurrent = op.name === appState.activeOperator;
+        const isAdmin = (op.permission_level || 'SDR') === 'ADMIN';
+        const badgeRole = isAdmin
+            ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">👑 Gestor (Admin)</span>`
+            : `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">💼 SDR (Vendas)</span>`;
+
         return `
             <div class="p-2.5 rounded-xl border border-slate-100 dark:border-darkborder bg-white dark:bg-darkcard flex items-center justify-between text-xs">
                 <div class="flex items-center gap-2">
-                    <div class="w-7 h-7 rounded-lg bg-brand-500/10 text-brand-500 font-bold flex items-center justify-center text-xs">
+                    <div class="w-7 h-7 rounded-lg ${isAdmin ? 'bg-indigo-500/10 text-indigo-500' : 'bg-brand-500/10 text-brand-500'} font-bold flex items-center justify-center text-xs">
                         ${op.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                        <strong class="text-slate-900 dark:text-white block">${escapeHtml(op.name)}</strong>
+                        <div class="flex items-center gap-1.5">
+                            <strong class="text-slate-900 dark:text-white">${escapeHtml(op.name)}</strong>
+                            ${badgeRole}
+                        </div>
                         <span class="text-[10px] text-slate-400">${escapeHtml(op.role)}</span>
                     </div>
                 </div>
                 ${isCurrent ? `
-                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">Ativo</span>
+                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-200 dark:bg-darkborder text-slate-700 dark:text-slate-300">Ativo</span>
                 ` : `
                     <button onclick="changeActiveOperator('${escapeHtml(op.name)}'); closeTeamModal();" class="text-xs text-brand-500 hover:text-brand-600 font-semibold">
                         Selecionar
@@ -355,8 +377,10 @@ function renderOperatorsModalList() {
 async function saveNewOperator() {
     const nameInput = document.getElementById('newOperatorName');
     const roleInput = document.getElementById('newOperatorRole');
+    const permSelect = document.getElementById('newOperatorPermLevel');
     const name = nameInput.value.trim();
     const role = roleInput.value.trim() || 'SDR / Vendas';
+    const permission_level = permSelect ? permSelect.value : 'SDR';
 
     if (!name) {
         showToast('Informe o nome do vendedor/operador.', 'error');
@@ -367,11 +391,11 @@ async function saveNewOperator() {
         const res = await fetch('/api/operators', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, role })
+            body: JSON.stringify({ name, role, permission_level })
         });
         const data = await res.json();
         if (data.success) {
-            showToast(`Operador ${name} cadastrado com sucesso!`, 'success');
+            showToast(`Operador ${name} (${permission_level}) cadastrado com sucesso!`, 'success');
             nameInput.value = '';
             await loadOperators();
         } else {
@@ -1504,6 +1528,11 @@ async function changeLeadCrmStatus(leadId, newStatus) {
 }
 
 function confirmClearLeads() {
+    const perm = getActiveOperatorPermission();
+    if (perm !== 'ADMIN') {
+        showToast('Acesso Restrito: Apenas Gestores/Administradores (ex: Marcos) podem limpar a base de leads.', 'error');
+        return;
+    }
     document.getElementById('clearConfirmModal').classList.remove('hidden');
 }
 
@@ -1513,7 +1542,11 @@ function closeClearModal() {
 
 async function executeClearLeads() {
     try {
-        const res = await fetch('/api/leads/clear', { method: 'POST' });
+        const res = await fetch('/api/leads/clear', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ operator: appState.activeOperator })
+        });
         const data = await res.json();
         if (data.success) {
             showToast('Base de leads e histórico limpos com sucesso!', 'success');

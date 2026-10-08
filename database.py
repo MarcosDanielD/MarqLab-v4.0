@@ -90,18 +90,29 @@ def init_db():
         )
     """)
 
-    # Table: Operators / SDR Team
+    # Table: Operators / SDR Team with Permission Levels
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS operators (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE NOT NULL,
             role TEXT DEFAULT 'SDR / Closer',
+            permission_level TEXT DEFAULT 'SDR',
             active INTEGER DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    cursor.execute("INSERT OR IGNORE INTO operators (name, role) VALUES ('Jamilly', 'SDR / Closer')")
-    cursor.execute("INSERT OR IGNORE INTO operators (name, role) VALUES ('Marcos', 'Gestor de Vendas')")
+
+    # Migration check for permission_level in operators table
+    cursor.execute("PRAGMA table_info(operators)")
+    existing_op_cols = [row[1] for row in cursor.fetchall()]
+    if "permission_level" not in existing_op_cols:
+        cursor.execute("ALTER TABLE operators ADD COLUMN permission_level TEXT DEFAULT 'SDR'")
+
+    cursor.execute("INSERT OR IGNORE INTO operators (name, role, permission_level) VALUES ('Jamilly', 'SDR / Closer', 'SDR')")
+    cursor.execute("INSERT OR IGNORE INTO operators (name, role, permission_level) VALUES ('Marcos', 'Gestor de Vendas', 'ADMIN')")
+    # Guarantee roles
+    cursor.execute("UPDATE operators SET permission_level = 'ADMIN' WHERE name = 'Marcos'")
+    cursor.execute("UPDATE operators SET permission_level = 'SDR' WHERE name = 'Jamilly'")
 
     # Activity and Scraping Logs table
     cursor.execute("""
@@ -535,10 +546,23 @@ def get_operators() -> List[Dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
-def add_operator(name: str, role: str = "SDR / Closer") -> int:
+def get_operator_by_name(name: str) -> Optional[Dict[str, Any]]:
+    """Fetches an operator by their name."""
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT OR IGNORE INTO operators (name, role) VALUES (?, ?)", (name.strip(), role.strip()))
+    cursor.execute("SELECT * FROM operators WHERE name = ? AND active = 1", (name.strip(),))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def add_operator(name: str, role: str = "SDR / Closer", permission_level: str = "SDR") -> int:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT OR IGNORE INTO operators (name, role, permission_level) VALUES (?, ?, ?)",
+        (name.strip(), role.strip(), permission_level.strip().upper()),
+    )
     op_id = cursor.lastrowid
     conn.commit()
     conn.close()

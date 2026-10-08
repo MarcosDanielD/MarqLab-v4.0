@@ -193,8 +193,17 @@ def update_crm_status(lead_id):
 
 @app.route("/api/leads/clear", methods=["POST"])
 def clear_leads_api():
+    data = request.get_json(silent=True) or {}
+    operator_name = data.get("operator", "Marcos")
+    op = database.get_operator_by_name(operator_name)
+    if op and op.get("permission_level") != "ADMIN":
+        return jsonify({
+            "success": False,
+            "error": "Acesso Negado: Apenas Gestores/Administradores possuem permissão para limpar a base de leads."
+        }), 403
+
     database.clear_all_leads()
-    database.add_log("Base de dados de leads limpa com sucesso.", "INFO")
+    database.add_log(f"Base de dados de leads limpa pelo administrador '{operator_name}'.", "WARNING")
     return jsonify({"success": True, "message": "Base de leads e histórico limpos com sucesso."})
 
 
@@ -209,6 +218,13 @@ def schedule_lead_meeting(lead_id):
     database.schedule_meeting(lead_id, scheduled_at, meeting_notes)
     database.add_log(f"Reunião agendada para o Lead #{lead_id} em {scheduled_at}.", "INFO")
     return jsonify({"success": True, "lead_id": lead_id, "scheduled_at": scheduled_at})
+
+
+@app.route("/api/lead/<int:lead_id>/unschedule", methods=["POST"])
+def unschedule_lead_meeting(lead_id):
+    database.unschedule_meeting(lead_id)
+    database.add_log(f"Reunião cancelada/removida para o Lead #{lead_id}.", "INFO")
+    return jsonify({"success": True, "lead_id": lead_id, "message": "Reunião cancelada com sucesso."})
 
 
 @app.route("/api/meetings", methods=["GET"])
@@ -294,11 +310,12 @@ def operators_api():
         data = request.get_json() or {}
         name = data.get("name", "").strip()
         role = data.get("role", "SDR / Closer").strip()
+        permission_level = data.get("permission_level", "SDR").strip().upper()
         if not name:
             return jsonify({"success": False, "error": "Nome obrigatório."}), 400
 
-        op_id = database.add_operator(name, role)
-        return jsonify({"success": True, "id": op_id, "name": name, "role": role})
+        op_id = database.add_operator(name, role, permission_level)
+        return jsonify({"success": True, "id": op_id, "name": name, "role": role, "permission_level": permission_level})
     else:
         ops = database.get_operators()
         return jsonify({"success": True, "operators": ops})
