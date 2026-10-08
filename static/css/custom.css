@@ -214,3 +214,78 @@ tbody tr:hover {
     color: #94a3b8;
     border: 1px solid rgba(148, 163, 184, 0.25);
 }
+
+/* ----------------------------------------------------
+   COLLAPSIBLE LEFT SIDEBAR & MAIN WRAPPER
+---------------------------------------------------- */
+#sidebarLeft {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#mainWrapper {
+    transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Collapsed state when clicking the 3-bars hamburger button */
+body.sidebar-collapsed #sidebarLeft {
+    transform: translateX(-100%) !important;
+}
+
+body.sidebar-collapsed #mainWrapper {
+    padding-left: 0 !important;
+}
+
+/* Mobile responsive drawer */
+@media (max-width: 1023px) {
+    #sidebarLeft {
+        transform: translateX(-100%);
+    }
+    body.sidebar-mobile-open #sidebarLeft {
+        transform: translateX(0) !important;
+    }
+    body.sidebar-mobile-open #sidebarBackdrop {
+        display: block !important;
+    }
+}
+
+/* Sidebar Navigation Items */
+.sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    transition: all 0.18s ease;
+    border: 1px solid transparent;
+}
+
+.dark .sidebar-nav-item {
+    color: #94a3b8;
+}
+
+.sidebar-nav-item:hover {
+    color: #0f172a;
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.dark .sidebar-nav-item:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-nav-item.active {
+    color: #4f46e5;
+    background: rgba(79, 70, 229, 0.08);
+    border-color: rgba(79, 70, 229, 0.15);
+}
+
+.dark .sidebar-nav-item.active {
+    color: #818cf8;
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.25);
+}
+

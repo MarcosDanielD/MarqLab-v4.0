@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Marq Lab</title>
+    <title>Marq Lab - Prospecção Ativa B2B</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -18,6 +18,7 @@
                     fontFamily: {
                         sans: ['"Plus Jakarta Sans"', 'sans-serif'],
                         mono: ['"JetBrains Mono"', 'monospace'],
+                        brand: ['"Space Grotesk"', 'sans-serif'],
                     },
                     colors: {
                         brand: {
@@ -50,519 +51,573 @@
     <div class="fixed top-0 left-1/4 w-96 h-96 bg-brand-500/10 dark:bg-brand-500/15 rounded-full blur-3xl pointer-events-none -z-10"></div>
     <div class="fixed top-1/3 right-10 w-80 h-80 bg-emerald-500/10 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -z-10"></div>
 
-    <!-- Top Navigation Bar -->
-    <header class="sticky top-0 z-40 border-b border-slate-200/80 dark:border-darkborder backdrop-blur-xl bg-white/80 dark:bg-darkbg/85 transition-colors">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <!-- Brand & Navigation -->
-            <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center shadow-md shadow-brand-500/20">
-                    <span class="font-extrabold text-white text-sm tracking-tight font-sans">M</span>
-                </div>
-                <span class="font-bold text-lg tracking-tight text-slate-900 dark:text-white">
-                    Marq Lab
-                </span>
+    <!-- MOBILE BACKDROP -->
+    <div id="sidebarBackdrop" onclick="toggleSidebarCollapse()" class="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm hidden lg:hidden"></div>
 
-                <!-- 4 Dedicated Navigation Menus -->
-                <nav class="hidden md:flex items-center gap-1 ml-6 border-l border-slate-200 dark:border-darkborder pl-6 text-xs font-semibold">
-                    <button onclick="switchView('mineracao')" id="navTabMineracao" class="nav-tab active">
-                        <i class="ph-bold ph-radar"></i>
-                        <span>Mineração</span>
-                    </button>
-                    <button onclick="switchView('prospeccao')" id="navTabProspeccao" class="nav-tab">
-                        <i class="ph-bold ph-users-three"></i>
-                        <span>Central de Leads</span>
-                        <span id="navLeadsCount" class="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 dark:bg-darkborder text-slate-600 dark:text-slate-300">0</span>
-                    </button>
-                    <button onclick="switchView('agenda')" id="navTabAgenda" class="nav-tab">
-                        <i class="ph-bold ph-calendar-blank"></i>
-                        <span>Agenda</span>
-                        <span id="navAgendaCount" class="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-500/20 text-indigo-600 dark:text-indigo-400">0</span>
-                    </button>
-                    <button onclick="switchView('metricas')" id="navTabMetricas" class="nav-tab">
-                        <i class="ph-bold ph-chart-pie"></i>
-                        <span>Métricas & Funil</span>
-                    </button>
-                </nav>
-            </div>
-
-            <!-- Header Actions -->
-            <div class="flex items-center gap-2.5">
-                <!-- Live Engine Badge -->
-                <div id="engineStatusBadge" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-darkborder bg-slate-100 dark:bg-darkcard text-xs font-medium">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span id="engineStatusText" class="text-slate-600 dark:text-slate-300">Motor Pronto</span>
-                </div>
-
-                <!-- Theme Toggle Button -->
-                <button id="themeToggleBtn" class="p-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-white transition shadow-sm" title="Alternar Modo Claro/Escuro">
-                    <i id="themeIcon" class="ph-bold ph-sun text-lg"></i>
-                </button>
-
-                <!-- Lateral Menu Trigger Button (Menu Lateral Direito) -->
-                <button id="sidebarToggleBtn" onclick="toggleSidebarMenu()" class="p-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-white transition shadow-sm" title="Abrir Menu Lateral">
-                    <i class="ph-bold ph-list text-lg"></i>
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <!-- RIGHT LATERAL DRAWER MENU (Menu Lateral Direito) -->
-    <div id="sidebarOverlay" onclick="toggleSidebarMenu()" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm hidden transition-opacity"></div>
-    <aside id="sidebarDrawer" class="fixed top-0 right-0 z-50 h-full w-80 bg-white dark:bg-darkcard border-l border-slate-200 dark:border-darkborder shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col justify-between p-6">
+    <!-- ============================================================ -->
+    <!-- LEFT SIDEBAR (Menu Lateral Esquerdo Fixo / Recolhível) -->
+    <!-- ============================================================ -->
+    <aside id="sidebarLeft" class="sidebar-left fixed top-0 left-0 bottom-0 w-72 bg-white dark:bg-darkcard border-r border-slate-200 dark:border-darkborder z-50 flex flex-col justify-between p-5 shadow-xl lg:shadow-none">
+        
+        <!-- Top Section: Brand + Active Operator + Nav Links -->
         <div class="space-y-6">
-            <div class="flex items-center justify-between border-b border-slate-100 dark:border-darkborder pb-4">
-                <div class="flex items-center gap-2">
-                    <div class="w-7 h-7 rounded-md bg-brand-600 text-white flex items-center justify-center font-bold text-xs">M</div>
-                    <span class="font-bold text-sm text-slate-900 dark:text-white">Menu Marq Lab</span>
+            <!-- Brand Logo -->
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-darkborder/70">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center shadow-md shadow-brand-500/25">
+                        <span class="font-extrabold text-white text-sm font-sans">M</span>
+                    </div>
+                    <div>
+                        <span class="font-bold text-lg tracking-tight text-slate-900 dark:text-white font-brand">
+                            Marq Lab
+                        </span>
+                        <span class="block text-[10px] font-semibold text-slate-400 -mt-1 tracking-wider uppercase">Prospecção B2B</span>
+                    </div>
                 </div>
-                <button onclick="toggleSidebarMenu()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white">
+
+                <!-- Close Mobile Button -->
+                <button onclick="toggleSidebarCollapse()" class="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white">
                     <i class="ph-bold ph-x text-lg"></i>
                 </button>
             </div>
 
-            <!-- Navigation Links -->
-            <div class="space-y-1.5 text-xs font-semibold">
-                <button onclick="switchView('mineracao'); toggleSidebarMenu();" class="sidebar-link" id="drawerLinkMineracao">
-                    <i class="ph-bold ph-radar text-base"></i>
-                    <span>Motor de Mineração</span>
+            <!-- Active Operator Card (SDR / Vendedor da Sessão) -->
+            <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-darkcard2 border border-slate-200/80 dark:border-darkborder/80 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Operador Ativo</span>
+                    <button onclick="openTeamModal()" class="text-[10px] font-semibold text-brand-500 hover:text-brand-600 flex items-center gap-0.5" title="Gerenciar Equipe">
+                        <i class="ph-bold ph-gear"></i> Equipe
+                    </button>
+                </div>
+                
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-pink-500 to-rose-500 text-white flex items-center justify-center font-bold text-sm shadow-sm" id="sidebarOperatorAvatar">
+                        J
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <select id="selectActiveOperator" onchange="changeActiveOperator(this.value)" class="w-full bg-transparent font-bold text-xs text-slate-900 dark:text-white focus:outline-none cursor-pointer truncate">
+                            <option value="Jamilly" selected>Jamilly (Linda namorada)</option>
+                            <option value="Marcos">Marcos (Gestor)</option>
+                        </select>
+                        <span class="block text-[10px] text-slate-400 font-medium truncate" id="sidebarOperatorRole">SDR / Closer de Vendas</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Items -->
+            <nav class="space-y-1.5">
+                <button onclick="switchView('mineracao')" id="sideNavMineracao" class="sidebar-nav-item active">
+                    <i class="ph-bold ph-radar text-lg text-brand-500"></i>
+                    <span>Mineração Google Maps</span>
                 </button>
-                <button onclick="switchView('prospeccao'); toggleSidebarMenu();" class="sidebar-link" id="drawerLinkProspeccao">
-                    <i class="ph-bold ph-users-three text-base"></i>
+
+                <button onclick="switchView('prospeccao')" id="sideNavProspeccao" class="sidebar-nav-item">
+                    <i class="ph-bold ph-users-three text-lg text-indigo-500"></i>
                     <span>Central de Leads</span>
-                    <span id="drawerLeadsCount" class="ml-auto px-2 py-0.5 rounded-full text-[10px] bg-slate-100 dark:bg-darkborder text-slate-500">0</span>
+                    <span id="sideLeadsCount" class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 dark:bg-darkborder text-slate-700 dark:text-slate-300">0</span>
                 </button>
-                <button onclick="switchView('agenda'); toggleSidebarMenu();" class="sidebar-link" id="drawerLinkAgenda">
-                    <i class="ph-bold ph-calendar-blank text-base"></i>
+
+                <button onclick="switchView('agenda')" id="sideNavAgenda" class="sidebar-nav-item">
+                    <i class="ph-bold ph-calendar-check text-lg text-purple-500"></i>
                     <span>Agenda de Reuniões</span>
-                    <span id="drawerAgendaCount" class="ml-auto px-2 py-0.5 rounded-full text-[10px] bg-brand-500/10 text-brand-500">0</span>
+                    <span id="sideAgendaCount" class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-600 dark:text-indigo-400">0</span>
                 </button>
-                <button onclick="switchView('metricas'); toggleSidebarMenu();" class="sidebar-link" id="drawerLinkMetricas">
-                    <i class="ph-bold ph-chart-pie text-base"></i>
+
+                <button onclick="switchView('metricas')" id="sideNavMetricas" class="sidebar-nav-item">
+                    <i class="ph-bold ph-chart-line-up text-lg text-emerald-500"></i>
                     <span>Métricas & Funil</span>
                 </button>
-            </div>
 
-            <!-- Quick Actions Section -->
-            <div class="pt-4 border-t border-slate-100 dark:border-darkborder space-y-3">
-                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ações do Sistema</span>
-                
-                <button onclick="confirmClearLeads(); toggleSidebarMenu();" class="w-full py-2.5 px-3 rounded-xl border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-semibold flex items-center gap-2 transition">
-                    <i class="ph-bold ph-trash text-base"></i>
-                    <span>Limpar Toda a Base de Leads</span>
+                <button onclick="openTeamModal()" class="sidebar-nav-item">
+                    <i class="ph-bold ph-identification-card text-lg text-amber-500"></i>
+                    <span>Equipe & SDRs</span>
                 </button>
-
-                <a href="/api/export/excel" class="w-full py-2.5 px-3 rounded-xl border border-slate-200 dark:border-darkborder hover:border-emerald-500/40 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-2 transition">
-                    <i class="ph-bold ph-file-xls text-emerald-500 text-base"></i>
-                    <span>Exportar Excel Completo (.xlsx)</span>
-                </a>
-            </div>
+            </nav>
         </div>
 
-        <div class="pt-4 border-t border-slate-100 dark:border-darkborder text-[11px] text-slate-400 text-center">
-            Marq Lab Prospecção B2B • Ticket R$ 1.000
+        <!-- Bottom Section: Actions, Theme, Status -->
+        <div class="space-y-3 pt-4 border-t border-slate-100 dark:border-darkborder/70 text-xs">
+            <!-- Clear Leads Database -->
+            <button onclick="confirmClearLeads()" class="w-full py-2.5 px-3 rounded-xl border border-rose-500/25 bg-rose-500/5 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-2 transition" title="Zerar banco de dados para nova prospecção">
+                <i class="ph-bold ph-trash text-sm"></i>
+                <span>Limpar Base de Leads</span>
+            </button>
+
+            <!-- Export Full Excel -->
+            <a href="/api/export/excel" class="w-full py-2 px-3 rounded-xl border border-slate-200 dark:border-darkborder hover:border-emerald-500/40 text-slate-700 dark:text-slate-300 font-semibold flex items-center gap-2 transition">
+                <i class="ph-bold ph-file-xls text-emerald-500 text-sm"></i>
+                <span>Exportar Excel (.xlsx)</span>
+            </a>
+
+            <!-- Theme Toggle & Engine Status -->
+            <div class="pt-2 flex items-center justify-between">
+                <button id="themeToggleBtn" onclick="toggleTheme()" class="p-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard2 text-slate-600 dark:text-slate-300 hover:text-brand-500 transition shadow-sm" title="Alternar Modo Claro/Escuro">
+                    <i id="themeIcon" class="ph-bold ph-sun text-base"></i>
+                </button>
+
+                <div class="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span id="engineStatusText">Motor Pronto</span>
+                </div>
+            </div>
         </div>
     </aside>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 space-y-7">
+    <!-- ============================================================ -->
+    <!-- MAIN CONTENT WRAPPER (Preenche todo o lado direito) -->
+    <!-- ============================================================ -->
+    <div id="mainWrapper" class="main-wrapper lg:pl-72 flex flex-col min-h-screen">
+        
+        <!-- Top App Header -->
+        <header class="sticky top-0 z-30 h-16 border-b border-slate-200/80 dark:border-darkborder backdrop-blur-xl bg-white/80 dark:bg-darkbg/85 flex items-center justify-between px-4 sm:px-6 lg:px-8 transition-colors">
+            <!-- Left: 3-Bars Hamburger Toggle + View Title -->
+            <div class="flex items-center gap-3">
+                <button id="btnToggleSidebar" onclick="toggleSidebarCollapse()" class="p-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-200 hover:text-brand-500 hover:border-brand-500/40 transition shadow-sm" title="Recolher / Expandir Menu Lateral">
+                    <i class="ph-bold ph-list text-lg"></i>
+                </button>
 
-        <!-- ============================================================ -->
-        <!-- MENU 1: MOTOR DE MINERAÇÃO (ROBÔ) -->
-        <!-- ============================================================ -->
-        <div id="viewMineracao" class="space-y-6">
-            <section class="glass-panel p-6 sm:p-7 rounded-2xl relative overflow-hidden">
-                <div class="flex items-center gap-2 mb-5">
-                    <div class="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-500 flex items-center justify-center">
-                        <i class="ph-bold ph-radar text-lg"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                            Robô de Prospecção Google Maps
-                        </h2>
-                        <p class="text-xs text-slate-400">Configure o nicho e a cidade que deseja minerar sem valores fixos de região.</p>
-                    </div>
+                <div class="flex items-center gap-2">
+                    <h1 id="headerViewTitle" class="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white tracking-tight">
+                        Robô de Mineração
+                    </h1>
+                    <span class="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded-md bg-brand-500/10 text-brand-600 dark:text-brand-400 border border-brand-500/20">
+                        R$ 1.000 / Landing Page
+                    </span>
+                </div>
+            </div>
+
+            <!-- Right: Today's Meetings Banner + Active SDR Indicator -->
+            <div class="flex items-center gap-2.5">
+                <!-- Banner: Reuniões de Hoje (Alerta de Call) -->
+                <div id="headerTodayBanner" onclick="switchView('agenda')" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400 text-xs font-semibold cursor-pointer hover:bg-amber-500/15 transition shadow-sm" title="Clique para ver a agenda de hoje">
+                    <i class="ph-bold ph-bell-ringing text-sm animate-bounce"></i>
+                    <span id="headerTodayText">Reuniões de hoje</span>
                 </div>
 
-                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                    <div class="flex-1 space-y-4">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <!-- Nicho (Sem valor fixo) -->
-                            <div class="space-y-1.5">
-                                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                                    Nicho Comercial
-                                </label>
-                                <div class="relative">
-                                    <i class="ph ph-briefcase absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
-                                    <input type="text" id="inputNiche" placeholder="Ex: Advocacia, Energia Solar..." value=""
-                                        class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition">
-                                </div>
-                            </div>
-
-                            <!-- Cidade (Sem valor fixo de SP) -->
-                            <div class="space-y-1.5">
-                                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                                    Cidade & Estado
-                                </label>
-                                <div class="relative">
-                                    <i class="ph ph-map-pin absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
-                                    <input type="text" id="inputCity" placeholder="Ex: Curitiba - PR, Belo Horizonte - MG..." value=""
-                                        class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition">
-                                </div>
-                            </div>
-
-                            <!-- Meta de Leads -->
-                            <div class="space-y-1.5">
-                                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                                    Meta de Leads com Telefone
-                                </label>
-                                <div class="relative">
-                                    <i class="ph ph-users-three absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
-                                    <select id="inputTarget" class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition cursor-pointer">
-                                        <option value="50">50 Leads</option>
-                                        <option value="100" selected>100 Leads (Recomendado)</option>
-                                        <option value="150">150 Leads</option>
-                                        <option value="200">200 Leads</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Quick Chips -->
-                        <div class="flex flex-wrap items-center gap-2 pt-1">
-                            <span class="text-[11px] font-semibold text-slate-400">Atalhos rápidos:</span>
-                            <button type="button" onclick="setNiche('Advocacia Empresarial')" class="quick-chip">Advocacia</button>
-                            <button type="button" onclick="setNiche('Clínicas Odontológicas')" class="quick-chip">Odontologia</button>
-                            <button type="button" onclick="setNiche('Energia Solar')" class="quick-chip">Energia Solar</button>
-                            <button type="button" onclick="setNiche('Clínicas de Estética')" class="quick-chip">Estética</button>
-                            <button type="button" onclick="setNiche('Academias')" class="quick-chip">Academias</button>
-                            <button type="button" onclick="setNiche('Contabilidade')" class="quick-chip">Contabilidade</button>
-                        </div>
-                    </div>
-
-                    <!-- Trigger Button -->
-                    <div class="flex flex-col sm:flex-row lg:flex-col gap-3 min-w-[200px] justify-center">
-                        <button id="btnStartScrape" class="px-6 py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 transition shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2.5 active:scale-[0.98]">
-                            <i id="btnStartIcon" class="ph-bold ph-play text-lg"></i>
-                            <span id="btnStartText">Iniciar Mineração</span>
-                        </button>
-                        <button id="btnStopScrape" class="hidden px-5 py-3 rounded-xl font-semibold text-rose-600 dark:text-rose-400 border border-rose-500/30 hover:bg-rose-500/10 transition flex items-center justify-center gap-2">
-                            <i class="ph-bold ph-stop text-lg"></i>
-                            <span>Interromper</span>
-                        </button>
-                    </div>
+                <!-- Active SDR Chip -->
+                <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-darkcard border border-slate-200 dark:border-darkborder text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span class="text-slate-400 font-normal">SDR:</span>
+                    <span id="headerOperatorName" class="font-bold text-slate-900 dark:text-white">Jamilly</span>
                 </div>
+            </div>
+        </header>
 
-                <!-- Live Progress Bar -->
-                <div id="liveProgressContainer" class="hidden mt-6 pt-5 border-t border-slate-200 dark:border-darkborder space-y-2.5">
-                    <div class="flex items-center justify-between text-xs">
-                        <div class="flex items-center gap-2 font-medium">
-                            <span class="w-2 h-2 rounded-full bg-brand-500 animate-ping"></span>
-                            <span class="text-slate-500 dark:text-slate-400">Processando agora:</span>
-                            <span id="liveCurrentLead" class="font-bold text-slate-800 dark:text-white truncate max-w-xs sm:max-w-md">Buscando empresas...</span>
+        <!-- Main Workspace Area -->
+        <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+            <!-- ============================================================ -->
+            <!-- MENU 1: MOTOR DE MINERAÇÃO (ROBÔ) -->
+            <!-- ============================================================ -->
+            <div id="viewMineracao" class="space-y-6">
+                <section class="glass-panel p-6 sm:p-7 rounded-2xl relative overflow-hidden">
+                    <div class="flex items-center gap-2.5 mb-5">
+                        <div class="w-9 h-9 rounded-xl bg-brand-500/10 text-brand-500 flex items-center justify-center">
+                            <i class="ph-bold ph-radar text-xl"></i>
                         </div>
-                        <div class="flex items-center gap-3">
-                            <span id="liveProgressText" class="font-mono font-bold text-brand-600 dark:text-brand-400">0 / 100 (0%)</span>
-                            <button id="toggleLogsBtn" class="text-[11px] text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center gap-1">
-                                <i class="ph ph-terminal-window"></i> Ver Logs
+                        <div>
+                            <h2 class="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                                Motor de Varredura Google Maps
+                            </h2>
+                            <p class="text-xs text-slate-400">Encontre empresas locais com telefone, avaliações e faça a auditoria técnica de website.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                        <div class="flex-1 space-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <!-- Nicho (Sem valor fixo) -->
+                                <div class="space-y-1.5">
+                                    <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                        Nicho Comercial
+                                    </label>
+                                    <div class="relative">
+                                        <i class="ph ph-briefcase absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                                        <input type="text" id="inputNiche" placeholder="Ex: Advocacia, Energia Solar..." value=""
+                                            class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition">
+                                    </div>
+                                </div>
+
+                                <!-- Cidade (Sem valor fixo) -->
+                                <div class="space-y-1.5">
+                                    <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                        Cidade & Estado
+                                    </label>
+                                    <div class="relative">
+                                        <i class="ph ph-map-pin absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                                        <input type="text" id="inputCity" placeholder="Ex: Curitiba - PR, Belo Horizonte - MG..." value=""
+                                            class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition">
+                                    </div>
+                                </div>
+
+                                <!-- Meta de Leads -->
+                                <div class="space-y-1.5">
+                                    <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                        Meta de Leads com Telefone
+                                    </label>
+                                    <div class="relative">
+                                        <i class="ph ph-users-three absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                                        <select id="inputTarget" class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition cursor-pointer">
+                                            <option value="50">50 Leads</option>
+                                            <option value="100" selected>100 Leads (Recomendado)</option>
+                                            <option value="150">150 Leads</option>
+                                            <option value="200">200 Leads</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Quick Chips -->
+                            <div class="flex flex-wrap items-center gap-2 pt-1">
+                                <span class="text-[11px] font-semibold text-slate-400">Atalhos rápidos:</span>
+                                <button type="button" onclick="setNiche('Advocacia Empresarial')" class="quick-chip">Advocacia</button>
+                                <button type="button" onclick="setNiche('Clínicas Odontológicas')" class="quick-chip">Odontologia</button>
+                                <button type="button" onclick="setNiche('Energia Solar')" class="quick-chip">Energia Solar</button>
+                                <button type="button" onclick="setNiche('Clínicas de Estética')" class="quick-chip">Estética</button>
+                                <button type="button" onclick="setNiche('Academias')" class="quick-chip">Academias</button>
+                                <button type="button" onclick="setNiche('Contabilidade')" class="quick-chip">Contabilidade</button>
+                            </div>
+                        </div>
+
+                        <!-- Trigger Button -->
+                        <div class="flex flex-col sm:flex-row lg:flex-col gap-3 min-w-[200px] justify-center">
+                            <button id="btnStartScrape" class="px-6 py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 transition shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2.5 active:scale-[0.98]">
+                                <i id="btnStartIcon" class="ph-bold ph-play text-lg"></i>
+                                <span id="btnStartText">Iniciar Mineração</span>
+                            </button>
+                            <button id="btnStopScrape" class="hidden px-5 py-3 rounded-xl font-semibold text-rose-600 dark:text-rose-400 border border-rose-500/30 hover:bg-rose-500/10 transition flex items-center justify-center gap-2">
+                                <i class="ph-bold ph-stop text-lg"></i>
+                                <span>Interromper</span>
                             </button>
                         </div>
                     </div>
-                    <div class="w-full bg-slate-200 dark:bg-darkborder h-2 rounded-full overflow-hidden">
-                        <div id="liveProgressBar" class="h-full bg-gradient-to-r from-brand-500 to-emerald-400 transition-all duration-300 w-0"></div>
-                    </div>
 
-                    <!-- Terminal Logs Drawer -->
-                    <div id="terminalDrawer" class="hidden mt-3 p-3.5 rounded-xl bg-slate-900 text-slate-300 font-mono text-xs max-h-48 overflow-y-auto space-y-1 shadow-inner border border-slate-800">
-                        <div class="flex items-center justify-between pb-1 text-[11px] text-slate-400 border-b border-slate-800">
-                            <span class="flex items-center gap-1.5"><i class="ph-bold ph-terminal"></i> Terminal Playwright</span>
-                            <span id="terminalCount">0 eventos</span>
+                    <!-- Live Progress Bar -->
+                    <div id="liveProgressContainer" class="hidden mt-6 pt-5 border-t border-slate-200 dark:border-darkborder space-y-2.5">
+                        <div class="flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-2 font-medium">
+                                <span class="w-2 h-2 rounded-full bg-brand-500 animate-ping"></span>
+                                <span class="text-slate-500 dark:text-slate-400">Processando agora:</span>
+                                <span id="liveCurrentLead" class="font-bold text-slate-800 dark:text-white truncate max-w-xs sm:max-w-md">Buscando empresas...</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span id="liveProgressText" class="font-mono font-bold text-brand-600 dark:text-brand-400">0 / 100 (0%)</span>
+                                <button id="toggleLogsBtn" class="text-[11px] text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center gap-1">
+                                    <i class="ph ph-terminal-window"></i> Ver Logs
+                                </button>
+                            </div>
                         </div>
-                        <div id="terminalLogs" class="space-y-1 pt-1.5">
-                            <div class="text-slate-500">// Aguardando disparo do scraper...</div>
+                        <div class="w-full bg-slate-200 dark:bg-darkborder h-2 rounded-full overflow-hidden">
+                            <div id="liveProgressBar" class="h-full bg-gradient-to-r from-brand-500 to-emerald-400 transition-all duration-300 w-0"></div>
+                        </div>
+
+                        <!-- Terminal Logs Drawer -->
+                        <div id="terminalDrawer" class="hidden mt-3 p-3.5 rounded-xl bg-slate-900 text-slate-300 font-mono text-xs max-h-48 overflow-y-auto space-y-1 shadow-inner border border-slate-800">
+                            <div class="flex items-center justify-between pb-1 text-[11px] text-slate-400 border-b border-slate-800">
+                                <span class="flex items-center gap-1.5"><i class="ph-bold ph-terminal"></i> Terminal Playwright</span>
+                                <span id="terminalCount">0 eventos</span>
+                            </div>
+                            <div id="terminalLogs" class="space-y-1 pt-1.5">
+                                <div class="text-slate-500">// Aguardando disparo do scraper...</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Shortcut Cards to Other Views -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div onclick="switchView('prospeccao')" class="glass-panel p-5 rounded-2xl cursor-pointer hover:border-brand-500/50 transition space-y-2 group">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center group-hover:scale-105 transition">
+                            <i class="ph-bold ph-users-three text-lg"></i>
+                        </div>
+                        <h3 class="font-bold text-sm text-slate-900 dark:text-white">Central de Leads Minerados</h3>
+                        <p class="text-xs text-slate-400">Acesse a tabela consolidada com filtros, distribuição de SDRs, propostas e WhatsApp.</p>
+                    </div>
+
+                    <div onclick="switchView('agenda')" class="glass-panel p-5 rounded-2xl cursor-pointer hover:border-indigo-500/50 transition space-y-2 group">
+                        <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center group-hover:scale-105 transition">
+                            <i class="ph-bold ph-calendar-check text-lg"></i>
+                        </div>
+                        <h3 class="font-bold text-sm text-slate-900 dark:text-white">Agenda de Reuniões</h3>
+                        <p class="text-xs text-slate-400">Visualize calls marcadas para apresentação da Landing Page e fechamento de R$ 1.000.</p>
+                    </div>
+
+                    <div onclick="switchView('metricas')" class="glass-panel p-5 rounded-2xl cursor-pointer hover:border-emerald-500/50 transition space-y-2 group">
+                        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center group-hover:scale-105 transition">
+                            <i class="ph-bold ph-chart-line-up text-lg"></i>
+                        </div>
+                        <h3 class="font-bold text-sm text-slate-900 dark:text-white">Funil Comercial & Métricas</h3>
+                        <p class="text-xs text-slate-400">Acompanhe a taxa de conversão das 5 etapas comerciais e projeção de faturamento.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- MENU 2: CENTRAL DE LEADS (TABELA COMPLETA & FILTROS) -->
+            <!-- ============================================================ -->
+            <div id="viewProspeccao" class="hidden space-y-6">
+                <!-- Compact Counters Bar -->
+                <section class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="glass-panel p-4 rounded-xl">
+                        <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total de Leads</span>
+                        <div class="mt-1 text-2xl font-extrabold text-slate-900 dark:text-white" id="kpiTotalLeads">0</div>
+                    </div>
+                    <div class="glass-panel p-4 rounded-xl">
+                        <span class="text-[11px] font-semibold text-rose-500 uppercase tracking-wider">Sem Website</span>
+                        <div class="mt-1 text-2xl font-extrabold text-rose-600 dark:text-rose-400" id="kpiSemSite">0</div>
+                    </div>
+                    <div class="glass-panel p-4 rounded-xl">
+                        <span class="text-[11px] font-semibold text-amber-500 uppercase tracking-wider">Modernização</span>
+                        <div class="mt-1 text-2xl font-extrabold text-amber-600 dark:text-amber-400" id="kpiModernizacao">0</div>
+                    </div>
+                    <div class="glass-panel p-4 rounded-xl cursor-pointer hover:border-brand-500/40 transition" onclick="switchView('agenda')">
+                        <span class="text-[11px] font-semibold text-indigo-500 uppercase tracking-wider flex items-center justify-between">
+                            Reuniões Agendadas
+                            <i class="ph-bold ph-arrow-right text-xs"></i>
+                        </span>
+                        <div class="mt-1 text-2xl font-extrabold text-indigo-600 dark:text-indigo-400" id="kpiAgendados">0</div>
+                    </div>
+                </section>
+
+                <!-- Leads Data Table Card -->
+                <section class="glass-panel p-6 rounded-2xl space-y-5">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="font-bold text-base text-slate-900 dark:text-white">Central de Leads Minerados</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Gestão de contatos, atribuição de SDR, histórico de notas e proposta de R$ 1.000.</p>
+                        </div>
+
+                        <!-- Toolbar Actions -->
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button onclick="confirmClearLeads()" class="px-3.5 py-2 rounded-xl text-xs font-semibold border border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition shadow-sm flex items-center gap-1.5" title="Limpar todos os leads">
+                                <i class="ph-bold ph-trash text-sm"></i>
+                                <span>Limpar Base</span>
+                            </button>
+                            <a href="/api/export/excel" class="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-200 hover:border-emerald-500/50 hover:text-emerald-500 transition shadow-sm flex items-center gap-1.5">
+                                <i class="ph-bold ph-file-xls text-emerald-500 text-base"></i>
+                                <span>Excel</span>
+                            </a>
+                            <a href="/api/export/csv" class="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-200 hover:border-brand-500/50 hover:text-brand-500 transition shadow-sm flex items-center gap-1.5">
+                                <i class="ph-bold ph-file-csv text-brand-500 text-base"></i>
+                                <span>CSV</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Enhanced Filters Bar with SDR and Phone Type -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 pt-1">
+                        <!-- 1. Search -->
+                        <div class="relative lg:col-span-2">
+                            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" id="filterSearch" placeholder="Buscar empresa, telefone ou anotação..."
+                                class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition">
+                        </div>
+
+                        <!-- 2. Diagnostic Status -->
+                        <div class="relative">
+                            <select id="filterStatus" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition cursor-pointer">
+                                <option value="all">Diagnóstico: Todos</option>
+                                <option value="sem_site">Sem Website</option>
+                                <option value="modernizacao">Modernização</option>
+                                <option value="quentes">Alta Prioridade (80+)</option>
+                                <option value="site_ativo">Site Ativo</option>
+                            </select>
+                        </div>
+
+                        <!-- 3. CRM Funnel Status -->
+                        <div class="relative">
+                            <select id="filterCrm" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition cursor-pointer">
+                                <option value="all">Funil: Todos</option>
+                                <option value="Novo">Status: Novo</option>
+                                <option value="Contatado">Status: Contatado</option>
+                                <option value="Reunião Agendada">Status: Agendada</option>
+                                <option value="Em Negociação">Status: Em Negociação</option>
+                                <option value="Fechado (R$ 1.000)">Fechado (R$ 1.000)</option>
+                                <option value="Perdido">Status: Perdido</option>
+                            </select>
+                        </div>
+
+                        <!-- 4. SDR Filter (Responsável) -->
+                        <div class="relative">
+                            <select id="filterOperator" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition cursor-pointer">
+                                <option value="all">SDR: Todos</option>
+                                <option value="Jamilly">SDR: Jamilly</option>
+                                <option value="Marcos">SDR: Marcos</option>
+                                <option value="unassigned">Sem Atribuição</option>
+                            </select>
+                        </div>
+
+                        <!-- 5. Phone Type Filter (WhatsApp vs Fixo) -->
+                        <div class="relative">
+                            <select id="filterPhoneType" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition cursor-pointer">
+                                <option value="all">Contato: Todos</option>
+                                <option value="whatsapp">📱 Celular / WhatsApp</option>
+                                <option value="landline">☎ Linha Fixa</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Column Width Controller for Company Name -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-darkcard2/40 py-2 px-3 rounded-xl border border-slate-100 dark:border-darkborder/50">
+                        <div class="flex items-center gap-1.5">
+                            <i class="ph-bold ph-arrows-out-line-horizontal text-brand-500 text-sm"></i>
+                            <span class="font-medium text-[11px]">Largura da Coluna Empresa:</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button type="button" onclick="setCompanyWidth('normal')" id="btnWidthNormal" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-300 hover:border-brand-500 transition shadow-sm">
+                                Normal (320px)
+                            </button>
+                            <button type="button" onclick="setCompanyWidth('wide')" id="btnWidthWide" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-300 hover:border-brand-500 transition shadow-sm">
+                                Largo (460px)
+                            </button>
+                            <button type="button" onclick="setCompanyWidth('extra')" id="btnWidthExtra" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-300 hover:border-brand-500 transition shadow-sm">
+                                Expandido (600px)
+                            </button>
+                            <button type="button" onclick="setCompanyWidth('full')" id="btnWidthFull" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-300 hover:border-brand-500 transition shadow-sm">
+                                Sem Limite (100%)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Leads Table -->
+                    <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-darkborder">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-100/80 dark:bg-darkcard2 text-slate-600 dark:text-slate-300 uppercase tracking-wider font-semibold border-b border-slate-200 dark:border-darkborder">
+                                <tr>
+                                    <th class="py-3 px-4">Score</th>
+                                    <th class="py-3 px-4" id="thCompanyCol" style="min-width: 320px;">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span>Empresa & Endereço</span>
+                                            <button type="button" onclick="cycleCompanyWidth()" class="text-[10px] lowercase text-slate-400 hover:text-brand-500 flex items-center gap-1 font-normal bg-slate-200/60 dark:bg-darkborder/60 px-1.5 py-0.5 rounded transition" title="Alternar largura da coluna">
+                                                <i class="ph-bold ph-arrows-out-line-horizontal"></i> ajustar
+                                            </button>
+                                        </div>
+                                    </th>
+                                    <th class="py-3 px-4 whitespace-nowrap">Contato</th>
+                                    <th class="py-3 px-4 whitespace-nowrap">Google Maps</th>
+                                    <th class="py-3 px-4 min-w-[180px]">Diagnóstico Web</th>
+                                    <th class="py-3 px-4 whitespace-nowrap">SDR Responsável</th>
+                                    <th class="py-3 px-4 whitespace-nowrap">Status & Agenda</th>
+                                    <th class="py-3 px-4 text-center whitespace-nowrap">Ações Comerciais</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leadsTableBody" class="divide-y divide-slate-200 dark:divide-darkborder bg-white dark:bg-darkcard">
+                                <!-- Rendered by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2">
+                        <div>Exibindo <span id="tableShowingCount" class="font-bold text-slate-800 dark:text-white">0</span> leads</div>
+                        <div class="text-[11px]">Proposta Comercial: R$ 1.000,00 / Landing Page</div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- MENU 3: AGENDA DE REUNIÕES & FOLLOW-UPS -->
+            <!-- ============================================================ -->
+            <div id="viewAgenda" class="hidden space-y-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <i class="ph-bold ph-calendar-check text-brand-500"></i>
+                            Agenda de Reuniões & Follow-ups
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            Acompanhe as calls marcadas para apresentação da proposta e fechamento de Landing Pages por R$ 1.000.
+                        </p>
+                    </div>
+                    <button onclick="switchView('prospeccao')" class="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-200 hover:text-brand-500 transition flex items-center gap-1.5">
+                        <i class="ph-bold ph-arrow-left"></i>
+                        <span>Ir para Base de Leads</span>
+                    </button>
+                </div>
+
+                <!-- Scheduled Meetings Grid -->
+                <div id="agendaCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Rendered by JS -->
+                </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- MENU 4: MÉTRICAS & FUNIL DE VENDAS -->
+            <!-- ============================================================ -->
+            <div id="viewMetricas" class="hidden space-y-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <i class="ph-bold ph-chart-line-up text-brand-500"></i>
+                            Funil Comercial & Indicadores de Vendas
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            Acompanhe a progressão das etapas de vendas e o faturamento da operação comercial.
+                        </p>
+                    </div>
+                    <button onclick="switchView('prospeccao')" class="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-200 hover:text-brand-500 transition flex items-center gap-1.5">
+                        <i class="ph-bold ph-arrow-left"></i>
+                        <span>Ir para Base de Leads</span>
+                    </button>
+                </div>
+
+                <!-- Big KPI Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="glass-panel p-5 rounded-2xl">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pipeline Potencial Estimado</span>
+                        <div class="mt-2 text-3xl font-extrabold text-emerald-500" id="metricPipeline">R$ 0</div>
+                        <div class="mt-1 text-xs text-slate-500">Estimativa baseada em 5% de conversão (R$ 1.000/deal)</div>
+                    </div>
+                    <div class="glass-panel p-5 rounded-2xl">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Contratos Fechados</span>
+                        <div class="mt-2 text-3xl font-extrabold text-indigo-500" id="metricFechados">0</div>
+                        <div class="mt-1 text-xs text-slate-500" id="metricFaturamentoReal">R$ 0 faturados</div>
+                    </div>
+                    <div class="glass-panel p-5 rounded-2xl">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Leads de Alta Prioridade</span>
+                        <div class="mt-2 text-3xl font-extrabold text-slate-900 dark:text-white" id="metricSuperQuentes">0</div>
+                        <div class="mt-1 text-xs text-slate-500">Score superior a 80 pontos</div>
+                    </div>
+                </div>
+
+                <!-- Charts Section: Funil Comercial + Distribuição -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- Chart 1: Funil Comercial -->
+                    <div class="lg:col-span-7 glass-panel p-6 rounded-2xl flex flex-col justify-between">
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-900 dark:text-white mb-1">Funil Comercial de Conversão</h4>
+                            <p class="text-xs text-slate-400 mb-4">Etapas de avanço: Minerados ➔ Oportunidades ➔ Em Contato ➔ Reuniões ➔ Fechados.</p>
+                        </div>
+                        <div class="relative h-72">
+                            <canvas id="chartFunnel"></canvas>
+                        </div>
+                        <div class="mt-3 pt-3 border-t border-slate-200 dark:border-darkborder text-xs text-slate-400 flex items-center justify-between">
+                            <span>Acompanhamento das taxas de conversão por etapa</span>
+                            <span class="font-bold text-indigo-500">Meta: R$ 1.000 por fechamento</span>
+                        </div>
+                    </div>
+
+                    <!-- Chart 2: Donut Status -->
+                    <div class="lg:col-span-5 glass-panel p-6 rounded-2xl flex flex-col justify-between">
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-900 dark:text-white mb-1">Distribuição de Diagnóstico</h4>
+                            <p class="text-xs text-slate-400 mb-4">Proporção entre empresas sem site vs sites precisando de redesign.</p>
+                        </div>
+                        <div class="relative h-64 flex items-center justify-center">
+                            <canvas id="chartStatusDonut"></canvas>
+                        </div>
+                        <div class="mt-3 pt-3 border-t border-slate-200 dark:border-darkborder grid grid-cols-2 gap-2 text-xs text-slate-400">
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Sem Site: <strong id="legendSemSite" class="text-slate-900 dark:text-white">0</strong></div>
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Modernização: <strong id="legendModernizacao" class="text-slate-900 dark:text-white">0</strong></div>
                         </div>
                     </div>
                 </div>
-            </section>
-
-            <!-- Quick Action Cards to Next Menus -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div onclick="switchView('prospeccao')" class="glass-panel p-5 rounded-2xl cursor-pointer hover:border-brand-500/50 transition space-y-2 group">
-                    <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center group-hover:scale-105 transition">
-                        <i class="ph-bold ph-users-three text-lg"></i>
-                    </div>
-                    <h3 class="font-bold text-sm text-slate-900 dark:text-white">Ver Base de Leads Minerados</h3>
-                    <p class="text-xs text-slate-400">Acesse a tabela consolidada com filtros, Cold Call e disparador de WhatsApp.</p>
-                </div>
-
-                <div onclick="switchView('agenda')" class="glass-panel p-5 rounded-2xl cursor-pointer hover:border-indigo-500/50 transition space-y-2 group">
-                    <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center group-hover:scale-105 transition">
-                        <i class="ph-bold ph-calendar-check text-lg"></i>
-                    </div>
-                    <h3 class="font-bold text-sm text-slate-900 dark:text-white">Acessar Agenda de Reuniões</h3>
-                    <p class="text-xs text-slate-400">Visualize as calls marcadas, pautas e acompanhamento de fechamento de R$ 1.000.</p>
-                </div>
-
-                <div onclick="switchView('metricas')" class="glass-panel p-5 rounded-2xl cursor-pointer hover:border-emerald-500/50 transition space-y-2 group">
-                    <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center group-hover:scale-105 transition">
-                        <i class="ph-bold ph-chart-pie text-lg"></i>
-                    </div>
-                    <h3 class="font-bold text-sm text-slate-900 dark:text-white">Funil Comercial & Métricas</h3>
-                    <p class="text-xs text-slate-400">Veja o funil de conversão das etapas de vendas e faturamento da operação.</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- ============================================================ -->
-        <!-- MENU 2: CENTRAL DE LEADS (TABELA COMPLETA & FILTROS) -->
-        <!-- ============================================================ -->
-        <div id="viewProspeccao" class="hidden space-y-6">
-            <!-- Compact Counters Bar -->
-            <section class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div class="glass-panel p-4 rounded-xl">
-                    <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total de Leads</span>
-                    <div class="mt-1 text-2xl font-extrabold text-slate-900 dark:text-white" id="kpiTotalLeads">0</div>
-                </div>
-                <div class="glass-panel p-4 rounded-xl">
-                    <span class="text-[11px] font-semibold text-rose-500 uppercase tracking-wider">Sem Website</span>
-                    <div class="mt-1 text-2xl font-extrabold text-rose-600 dark:text-rose-400" id="kpiSemSite">0</div>
-                </div>
-                <div class="glass-panel p-4 rounded-xl">
-                    <span class="text-[11px] font-semibold text-amber-500 uppercase tracking-wider">Modernização</span>
-                    <div class="mt-1 text-2xl font-extrabold text-amber-600 dark:text-amber-400" id="kpiModernizacao">0</div>
-                </div>
-                <div class="glass-panel p-4 rounded-xl cursor-pointer hover:border-brand-500/40 transition" onclick="switchView('agenda')">
-                    <span class="text-[11px] font-semibold text-indigo-500 uppercase tracking-wider flex items-center justify-between">
-                        Reuniões Agendadas
-                        <i class="ph-bold ph-arrow-right text-xs"></i>
-                    </span>
-                    <div class="mt-1 text-2xl font-extrabold text-indigo-600 dark:text-indigo-400" id="kpiAgendados">0</div>
-                </div>
-            </section>
-
-            <!-- Leads Data Table Card -->
-            <section class="glass-panel p-6 rounded-2xl space-y-5">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                        <h3 class="font-bold text-base text-slate-900 dark:text-white">Central de Leads Minerados</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Gestão de contatos qualificados, scripts sob medida e funil de prospecção.</p>
-                    </div>
-
-                    <!-- Toolbar Actions with Clean Button -->
-                    <div class="flex flex-wrap items-center gap-2">
-                        <!-- Clean Table Button (Botão de Limpeza) -->
-                        <button onclick="confirmClearLeads()" class="px-3.5 py-2 rounded-xl text-xs font-semibold border border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition shadow-sm flex items-center gap-1.5" title="Limpar todos os leads e zerar a tabela">
-                            <i class="ph-bold ph-trash text-sm"></i>
-                            <span>Limpar Base</span>
-                        </button>
-                        <a href="/api/export/excel" class="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-200 hover:border-emerald-500/50 hover:text-emerald-500 transition shadow-sm flex items-center gap-1.5">
-                            <i class="ph-bold ph-file-xls text-emerald-500 text-base"></i>
-                            <span>Excel</span>
-                        </a>
-                        <a href="/api/export/csv" class="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-200 hover:border-brand-500/50 hover:text-brand-500 transition shadow-sm flex items-center gap-1.5">
-                            <i class="ph-bold ph-file-csv text-brand-500 text-base"></i>
-                            <span>CSV</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Filters -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
-                    <div class="relative">
-                        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                        <input type="text" id="filterSearch" placeholder="Buscar empresa, telefone..."
-                            class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition">
-                    </div>
-
-                    <div class="relative">
-                        <select id="filterStatus" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition cursor-pointer">
-                            <option value="all">Todos os Status</option>
-                            <option value="sem_site">Prioridade Crítica: Sem Site</option>
-                            <option value="modernizacao">Oportunidade: Modernização</option>
-                            <option value="quentes">Alta Prioridade (Score 80+)</option>
-                            <option value="site_ativo">Site Ativo</option>
-                        </select>
-                    </div>
-
-                    <div class="relative">
-                        <select id="filterCrm" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition cursor-pointer">
-                            <option value="all">Todos no Funil</option>
-                            <option value="Novo">Status: Novo</option>
-                            <option value="Contatado">Status: Contatado</option>
-                            <option value="Reunião Agendada">Status: Reunião Agendada</option>
-                            <option value="Em Negociação">Status: Em Negociação</option>
-                            <option value="Fechado (R$ 1.000)">Status: Fechado (R$ 1.000)</option>
-                            <option value="Perdido">Status: Perdido</option>
-                        </select>
-                    </div>
-
-                    <div class="relative">
-                        <select id="filterSort" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition cursor-pointer">
-                            <option value="score_desc">Maior Score</option>
-                            <option value="reviews_desc">Mais Avaliações</option>
-                            <option value="rating_desc">Maior Nota</option>
-                            <option value="name_asc">Nome A-Z</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Column Width Controller for Company Name -->
-                <div class="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-darkcard2/40 py-2 px-3 rounded-xl border border-slate-100 dark:border-darkborder/50">
-                    <div class="flex items-center gap-1.5">
-                        <i class="ph-bold ph-arrows-out-line-horizontal text-brand-500 text-sm"></i>
-                        <span class="font-medium text-[11px]">Largura da Coluna Empresa:</span>
-                    </div>
-                    <div class="flex items-center gap-1">
-                        <button type="button" onclick="setCompanyWidth('normal')" id="btnWidthNormal" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-300 hover:border-brand-500 transition shadow-sm">
-                            Normal (320px)
-                        </button>
-                        <button type="button" onclick="setCompanyWidth('wide')" id="btnWidthWide" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-300 hover:border-brand-500 transition shadow-sm">
-                            Largo (460px)
-                        </button>
-                        <button type="button" onclick="setCompanyWidth('extra')" id="btnWidthExtra" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-300 hover:border-brand-500 transition shadow-sm">
-                            Expandido (600px)
-                        </button>
-                        <button type="button" onclick="setCompanyWidth('full')" id="btnWidthFull" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-300 hover:border-brand-500 transition shadow-sm">
-                            Sem Limite (100%)
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Leads Table (Nome Completo Ajustável sem corte) -->
-                <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-darkborder">
-                    <table class="w-full text-left text-xs">
-                        <thead class="bg-slate-100/80 dark:bg-darkcard2 text-slate-600 dark:text-slate-300 uppercase tracking-wider font-semibold border-b border-slate-200 dark:border-darkborder">
-                            <tr>
-                                <th class="py-3 px-4">Score</th>
-                                <th class="py-3 px-4" id="thCompanyCol" style="min-width: 320px;">
-                                    <div class="flex items-center justify-between gap-2">
-                                        <span>Empresa & Endereço</span>
-                                        <button type="button" onclick="cycleCompanyWidth()" class="text-[10px] lowercase text-slate-400 hover:text-brand-500 flex items-center gap-1 font-normal bg-slate-200/60 dark:bg-darkborder/60 px-1.5 py-0.5 rounded transition" title="Alternar largura da coluna">
-                                            <i class="ph-bold ph-arrows-out-line-horizontal"></i> ajustar
-                                        </button>
-                                    </div>
-                                </th>
-                                <th class="py-3 px-4 whitespace-nowrap">Contato</th>
-                                <th class="py-3 px-4 whitespace-nowrap">Google Maps</th>
-                                <th class="py-3 px-4 min-w-[200px]">Diagnóstico Web</th>
-                                <th class="py-3 px-4 whitespace-nowrap">Status & Agenda</th>
-                                <th class="py-3 px-4 text-center whitespace-nowrap">Ações Comerciais</th>
-                            </tr>
-                        </thead>
-                        <tbody id="leadsTableBody" class="divide-y divide-slate-200 dark:divide-darkborder bg-white dark:bg-darkcard">
-                            <!-- Rendered by JS -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2">
-                    <div>Exibindo <span id="tableShowingCount" class="font-bold text-slate-800 dark:text-white">0</span> leads</div>
-                    <div class="text-[11px]">Proposta: R$ 1.000,00 / Landing Page</div>
-                </div>
-            </section>
-        </div>
-
-        <!-- ============================================================ -->
-        <!-- MENU 3: AGENDA DE REUNIÕES & FOLLOW-UPS -->
-        <!-- ============================================================ -->
-        <div id="viewAgenda" class="hidden space-y-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <i class="ph-bold ph-calendar-check text-brand-500"></i>
-                        Agenda de Reuniões & Follow-ups
-                    </h2>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        Gerencie calls marcadas para apresentação do protótipo e fechamento de Landing Pages por R$ 1.000.
-                    </p>
-                </div>
-                <button onclick="switchView('prospeccao')" class="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-200 hover:text-brand-500 transition flex items-center gap-1.5">
-                    <i class="ph-bold ph-arrow-left"></i>
-                    <span>Ir para Base de Leads</span>
-                </button>
             </div>
 
-            <!-- Scheduled Meetings Grid -->
-            <div id="agendaCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <!-- Rendered by JS -->
-            </div>
-        </div>
-
-        <!-- ============================================================ -->
-        <!-- MENU 4: MÉTRICAS & FUNIL DE VENDAS -->
-        <!-- ============================================================ -->
-        <div id="viewMetricas" class="hidden space-y-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <i class="ph-bold ph-chart-line-up text-brand-500"></i>
-                        Funil de Vendas & Indicadores Comerciais
-                    </h2>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        Acompanhe o avanço do processo comercial desde a mineração até o fechamento de contratos.
-                    </p>
-                </div>
-                <button onclick="switchView('prospeccao')" class="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-200 hover:text-brand-500 transition flex items-center gap-1.5">
-                    <i class="ph-bold ph-arrow-left"></i>
-                    <span>Ir para Base de Leads</span>
-                </button>
-            </div>
-
-            <!-- Big KPI Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div class="glass-panel p-5 rounded-2xl">
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pipeline Potencial Estimado</span>
-                    <div class="mt-2 text-3xl font-extrabold text-emerald-500" id="metricPipeline">R$ 0</div>
-                    <div class="mt-1 text-xs text-slate-500">Estimativa baseada em 5% de conversão (R$ 1.000/deal)</div>
-                </div>
-                <div class="glass-panel p-5 rounded-2xl">
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Contratos Fechados</span>
-                    <div class="mt-2 text-3xl font-extrabold text-indigo-500" id="metricFechados">0</div>
-                    <div class="mt-1 text-xs text-slate-500" id="metricFaturamentoReal">R$ 0 faturados</div>
-                </div>
-                <div class="glass-panel p-5 rounded-2xl">
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Leads de Alta Prioridade</span>
-                    <div class="mt-2 text-3xl font-extrabold text-slate-900 dark:text-white" id="metricSuperQuentes">0</div>
-                    <div class="mt-1 text-xs text-slate-500">Score superior a 80 pontos</div>
-                </div>
-            </div>
-
-            <!-- Charts Section: Funil Comercial + Distribuição -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <!-- Chart 1: Funil Comercial (Substituiu as bolinhas dispersas) -->
-                <div class="lg:col-span-7 glass-panel p-6 rounded-2xl flex flex-col justify-between">
-                    <div>
-                        <h4 class="font-bold text-sm text-slate-900 dark:text-white mb-1">Funil Comercial de Conversão</h4>
-                        <p class="text-xs text-slate-400 mb-4">Etapas de avanço da equipe: Minerados ➔ Oportunidades ➔ Em Contato ➔ Reuniões ➔ Fechados.</p>
-                    </div>
-                    <div class="relative h-72">
-                        <canvas id="chartFunnel"></canvas>
-                    </div>
-                    <div class="mt-3 pt-3 border-t border-slate-200 dark:border-darkborder text-xs text-slate-400 flex items-center justify-between">
-                        <span>Acompanhamento das taxas de conversão por etapa</span>
-                        <span class="font-bold text-indigo-500">Meta: R$ 1.000 por fechamento</span>
-                    </div>
-                </div>
-
-                <!-- Chart 2: Donut Status -->
-                <div class="lg:col-span-5 glass-panel p-6 rounded-2xl flex flex-col justify-between">
-                    <div>
-                        <h4 class="font-bold text-sm text-slate-900 dark:text-white mb-1">Distribuição de Diagnóstico</h4>
-                        <p class="text-xs text-slate-400 mb-4">Proporção entre empresas sem site vs sites precisando de redesign.</p>
-                    </div>
-                    <div class="relative h-64 flex items-center justify-center">
-                        <canvas id="chartStatusDonut"></canvas>
-                    </div>
-                    <div class="mt-3 pt-3 border-t border-slate-200 dark:border-darkborder grid grid-cols-2 gap-2 text-xs text-slate-400">
-                        <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Sem Site: <strong id="legendSemSite" class="text-slate-900 dark:text-white">0</strong></div>
-                        <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Modernização: <strong id="legendModernizacao" class="text-slate-900 dark:text-white">0</strong></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </main>
+        </main>
+    </div>
 
     <!-- ============================================================ -->
-    <!-- MODAL 1: COLD CALL & PITCH COMERCIAL -->
+    <!-- MODAL 1: COLD CALL & CADÊNCIA DE WHATSAPP -->
     <!-- ============================================================ -->
     <div id="scriptModal" class="fixed inset-0 z-50 hidden bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="glass-modal max-w-2xl w-full p-6 sm:p-7 rounded-2xl shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
@@ -581,27 +636,36 @@
                 </button>
             </div>
 
-            <!-- Tabs -->
-            <div class="flex border-b border-slate-200 dark:border-darkborder gap-4 text-xs font-semibold">
-                <button id="tabColdCallBtn" onclick="switchModalTab('coldcall')" class="pb-2 border-b-2 border-brand-500 text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
-                    <i class="ph-bold ph-phone"></i> Roteiro de Ligação (Cold Call)
+            <!-- Tabs de Abordagem -->
+            <div class="flex flex-wrap border-b border-slate-200 dark:border-darkborder gap-2 text-xs font-semibold">
+                <button id="tabColdCallBtn" onclick="switchModalTab('coldcall')" class="pb-2 border-b-2 border-brand-500 text-brand-600 dark:text-brand-400 flex items-center gap-1.5 px-2">
+                    <i class="ph-bold ph-phone"></i> Cold Call (Ligação)
                 </button>
-                <button id="tabWhatsAppBtn" onclick="switchModalTab('whatsapp')" class="pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center gap-1.5">
-                    <i class="ph-bold ph-whatsapp-logo"></i> Mensagem WhatsApp
+                <button id="tabWhatsAppBtn" onclick="switchModalTab('whatsapp')" class="pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center gap-1.5 px-2">
+                    <i class="ph-bold ph-whatsapp-logo"></i> WhatsApp 1 (Diagnóstico)
+                </button>
+                <button id="tabFollowup1Btn" onclick="switchModalTab('followup1')" class="pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center gap-1.5 px-2">
+                    <i class="ph-bold ph-chat-circle-dots"></i> Follow-up D+2
+                </button>
+                <button id="tabFollowup2Btn" onclick="switchModalTab('followup2')" class="pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center gap-1.5 px-2">
+                    <i class="ph-bold ph-hourglass-high"></i> Follow-up D+5
+                </button>
+                <button id="tabProposalTextBtn" onclick="switchModalTab('proposalText')" class="pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center gap-1.5 px-2">
+                    <i class="ph-bold ph-file-text"></i> Resumo Proposta
                 </button>
             </div>
 
             <!-- Tab 1: Cold Call -->
             <div id="modalColdCallContent" class="space-y-3">
                 <div class="relative">
-                    <textarea id="modalColdCallText" readonly rows="13" class="w-full p-3.5 rounded-xl border border-slate-200 dark:border-darkborder bg-slate-50 dark:bg-darkbg text-slate-800 dark:text-slate-200 font-mono text-xs focus:outline-none resize-none leading-relaxed"></textarea>
+                    <textarea id="modalColdCallText" readonly rows="12" class="w-full p-3.5 rounded-xl border border-slate-200 dark:border-darkborder bg-slate-50 dark:bg-darkbg text-slate-800 dark:text-slate-200 font-mono text-xs focus:outline-none resize-none leading-relaxed"></textarea>
                     <button onclick="copyToClipboard('modalColdCallText')" class="absolute top-3 right-3 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-darkcard border border-slate-200 dark:border-darkborder text-slate-600 dark:text-slate-300 hover:text-brand-500 shadow-sm flex items-center gap-1">
                         <i class="ph ph-copy"></i> Copiar
                     </button>
                 </div>
             </div>
 
-            <!-- Tab 2: WhatsApp -->
+            <!-- Tab 2: WhatsApp Passo 1 -->
             <div id="modalWhatsAppContent" class="space-y-3 hidden">
                 <div class="relative">
                     <textarea id="modalWhatsAppText" readonly rows="9" class="w-full p-3.5 rounded-xl border border-slate-200 dark:border-darkborder bg-slate-50 dark:bg-darkbg text-slate-800 dark:text-slate-200 text-xs focus:outline-none resize-none leading-relaxed"></textarea>
@@ -617,6 +681,48 @@
                 </div>
             </div>
 
+            <!-- Tab 3: WhatsApp Follow-up D+2 -->
+            <div id="modalFollowup1Content" class="space-y-3 hidden">
+                <div class="relative">
+                    <textarea id="modalFollowup1Text" readonly rows="9" class="w-full p-3.5 rounded-xl border border-slate-200 dark:border-darkborder bg-slate-50 dark:bg-darkbg text-slate-800 dark:text-slate-200 text-xs focus:outline-none resize-none leading-relaxed"></textarea>
+                    <button onclick="copyToClipboard('modalFollowup1Text')" class="absolute top-3 right-3 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-darkcard border border-slate-200 dark:border-darkborder text-slate-600 dark:text-slate-300 hover:text-emerald-500 shadow-sm flex items-center gap-1">
+                        <i class="ph ph-copy"></i> Copiar
+                    </button>
+                </div>
+                <div class="pt-2 flex justify-end">
+                    <a id="modalFollowup1Link" href="#" target="_blank" class="px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-500 transition shadow-lg shadow-emerald-500/20 flex items-center gap-2">
+                        <i class="ph-bold ph-whatsapp-logo text-base"></i>
+                        <span>Enviar Follow-up no WhatsApp</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Tab 4: WhatsApp Follow-up D+5 -->
+            <div id="modalFollowup2Content" class="space-y-3 hidden">
+                <div class="relative">
+                    <textarea id="modalFollowup2Text" readonly rows="9" class="w-full p-3.5 rounded-xl border border-slate-200 dark:border-darkborder bg-slate-50 dark:bg-darkbg text-slate-800 dark:text-slate-200 text-xs focus:outline-none resize-none leading-relaxed"></textarea>
+                    <button onclick="copyToClipboard('modalFollowup2Text')" class="absolute top-3 right-3 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-darkcard border border-slate-200 dark:border-darkborder text-slate-600 dark:text-slate-300 hover:text-emerald-500 shadow-sm flex items-center gap-1">
+                        <i class="ph ph-copy"></i> Copiar
+                    </button>
+                </div>
+                <div class="pt-2 flex justify-end">
+                    <a id="modalFollowup2Link" href="#" target="_blank" class="px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-500 transition shadow-lg shadow-emerald-500/20 flex items-center gap-2">
+                        <i class="ph-bold ph-whatsapp-logo text-base"></i>
+                        <span>Enviar Quebra de Contato no WhatsApp</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Tab 5: Proposta em Texto -->
+            <div id="modalProposalTextContent" class="space-y-3 hidden">
+                <div class="relative">
+                    <textarea id="modalProposalPlainText" readonly rows="12" class="w-full p-3.5 rounded-xl border border-slate-200 dark:border-darkborder bg-slate-50 dark:bg-darkbg text-slate-800 dark:text-slate-200 text-xs focus:outline-none resize-none leading-relaxed"></textarea>
+                    <button onclick="copyToClipboard('modalProposalPlainText')" class="absolute top-3 right-3 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-darkcard border border-slate-200 dark:border-darkborder text-slate-600 dark:text-slate-300 hover:text-emerald-500 shadow-sm flex items-center gap-1">
+                        <i class="ph ph-copy"></i> Copiar Proposta
+                    </button>
+                </div>
+            </div>
+
             <div class="pt-3 border-t border-slate-200 dark:border-darkborder flex items-center justify-between">
                 <span class="text-[11px] text-slate-400">Oferta: Landing Page em 72h por R$ 1.000,00</span>
                 <button onclick="closeScriptModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-darkcard text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-darkcard2 transition">
@@ -627,7 +733,150 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- MODAL 2: AGENDAMENTO DE REUNIÃO / CALL -->
+    <!-- MODAL 2: HISTÓRICO DE NOTAS & FOLLOW-UP DO LEAD -->
+    <!-- ============================================================ -->
+    <div id="notesModal" class="fixed inset-0 z-50 hidden bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-modal max-w-lg w-full p-6 rounded-2xl shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-darkborder pb-3">
+                <div class="flex items-center gap-2">
+                    <i class="ph-bold ph-note-pencil text-brand-500 text-lg"></i>
+                    <div>
+                        <h4 class="font-bold text-sm text-slate-900 dark:text-white" id="notesModalCompanyName">Anotações do Lead</h4>
+                        <span class="text-[10px] text-slate-400">Histórico de ligações, respostas e follow-ups</span>
+                    </div>
+                </div>
+                <button onclick="closeNotesModal()" class="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white">
+                    <i class="ph-bold ph-x text-base"></i>
+                </button>
+            </div>
+
+            <!-- Nova Anotação -->
+            <div class="space-y-2">
+                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">Nova Observação / O que o cliente disse?</label>
+                <div class="flex gap-2">
+                    <input type="text" id="newNoteInput" placeholder="Ex: Secretária disse para ligar na terça às 14h com Dr. Marcelo..."
+                        class="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkbg text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/40">
+                    <button onclick="saveNewNote()" class="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-brand-600 hover:bg-brand-500 transition shadow-sm shrink-0 flex items-center gap-1">
+                        <i class="ph-bold ph-floppy-disk"></i> Salvar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Timeline de Notas Anteriores -->
+            <div class="flex-1 overflow-y-auto space-y-2.5 pt-2" id="notesListContainer">
+                <div class="text-center py-6 text-slate-400 text-xs">Carregando anotações...</div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-200 dark:border-darkborder flex justify-end">
+                <button onclick="closeNotesModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-darkcard text-slate-700 dark:text-slate-300">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MODAL 3: PROPOSTA COMERCIAL FORMAL EM PDF (1-CLIQUE) -->
+    <!-- ============================================================ -->
+    <div id="proposalModal" class="fixed inset-0 z-50 hidden bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-modal max-w-xl w-full p-6 sm:p-7 rounded-2xl shadow-2xl space-y-5">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-darkborder pb-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+                        <i class="ph-bold ph-file-pdf text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-base text-slate-900 dark:text-white" id="proposalModalCompanyName">Proposta Comercial</h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Landing Page Corporativa • R$ 1.000,00</p>
+                    </div>
+                </div>
+                <button onclick="closeProposalModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition">
+                    <i class="ph-bold ph-x text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Resumo da Proposta -->
+            <div class="p-4 rounded-xl bg-slate-50 dark:bg-darkbg border border-slate-200/80 dark:border-darkborder space-y-3 text-xs">
+                <div class="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-darkborder">
+                    <span class="text-slate-400">Responsável Marq Lab:</span>
+                    <strong class="text-slate-800 dark:text-white" id="proposalModalOperator">Jamilly</strong>
+                </div>
+                <div class="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-darkborder">
+                    <span class="text-slate-400">Escopo:</span>
+                    <strong class="text-slate-800 dark:text-white">Landing Page 100% Mobile + Botão WhatsApp + SSL</strong>
+                </div>
+                <div class="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-darkborder">
+                    <span class="text-slate-400">Prazo de Entrega:</span>
+                    <strong class="text-slate-800 dark:text-white">Até 5 dias úteis</strong>
+                </div>
+                <div class="flex justify-between items-center pt-1">
+                    <span class="text-slate-400 font-bold uppercase">Investimento:</span>
+                    <strong class="text-emerald-600 dark:text-emerald-400 text-base font-extrabold">R$ 1.000,00 (50% entrada + 50% entrega)</strong>
+                </div>
+            </div>
+
+            <!-- Botões de Ação -->
+            <div class="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                <a id="proposalPrintLink" href="#" target="_blank" class="w-full sm:flex-1 py-3 px-4 rounded-xl font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-500 transition shadow-md shadow-indigo-500/25 flex items-center justify-center gap-2">
+                    <i class="ph-bold ph-printer text-base"></i>
+                    <span>Abrir / Salvar em PDF</span>
+                </a>
+                <button onclick="copyProposalTextFromModal()" class="w-full sm:flex-1 py-3 px-4 rounded-xl font-bold text-xs border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard hover:border-brand-500 text-slate-700 dark:text-slate-200 flex items-center justify-center gap-2 transition">
+                    <i class="ph-bold ph-copy text-base"></i>
+                    <span>Copiar Texto para WhatsApp</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MODAL 4: GESTÃO DA EQUIPE (SDRs & OPERADORES) -->
+    <!-- ============================================================ -->
+    <div id="teamModal" class="fixed inset-0 z-50 hidden bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-modal max-w-md w-full p-6 rounded-2xl shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-darkborder pb-3">
+                <div class="flex items-center gap-2">
+                    <i class="ph-bold ph-users text-amber-500 text-lg"></i>
+                    <div>
+                        <h4 class="font-bold text-sm text-slate-900 dark:text-white">Equipe Comercial (SDRs)</h4>
+                        <span class="text-[10px] text-slate-400">Cadastre e alterne operadores para dividir os leads</span>
+                    </div>
+                </div>
+                <button onclick="closeTeamModal()" class="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white">
+                    <i class="ph-bold ph-x text-base"></i>
+                </button>
+            </div>
+
+            <!-- Adicionar Novo Operador -->
+            <div class="space-y-2 p-3.5 rounded-xl bg-slate-50 dark:bg-darkcard2 border border-slate-100 dark:border-darkborder">
+                <label class="text-[11px] font-bold text-slate-600 dark:text-slate-300">Cadastrar Novo Vendedor / Funcionário</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="newOperatorName" placeholder="Nome do Vendedor" class="px-3 py-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkbg text-xs focus:outline-none">
+                    <input type="text" id="newOperatorRole" placeholder="Cargo (ex: SDR)" value="SDR / Vendas" class="px-3 py-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkbg text-xs focus:outline-none">
+                </div>
+                <button onclick="saveNewOperator()" class="w-full py-2 rounded-xl text-xs font-bold text-white bg-brand-600 hover:bg-brand-500 transition shadow-sm mt-1">
+                    Adicionar à Equipe
+                </button>
+            </div>
+
+            <!-- Lista de Operadores Cadastrados -->
+            <div class="space-y-2 pt-1">
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Membros Ativos</span>
+                <div id="operatorsListContainer" class="space-y-1.5 max-h-48 overflow-y-auto">
+                    <!-- Rendered by JS -->
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-200 dark:border-darkborder flex justify-end">
+                <button onclick="closeTeamModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-darkcard text-slate-700 dark:text-slate-300">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MODAL 5: AGENDAMENTO DE REUNIÃO / CALL -->
     <!-- ============================================================ -->
     <div id="scheduleModal" class="fixed inset-0 z-50 hidden bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="glass-modal max-w-md w-full p-6 rounded-2xl shadow-2xl space-y-4">
@@ -649,7 +898,7 @@
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="font-semibold text-slate-600 dark:text-slate-300">Data</label>
+                        <label class="font-semibold text-slate-600 dark:text-slate-300">Data da Call</label>
                         <input type="date" id="scheduleDateInput" class="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkbg text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/40">
                     </div>
                     <div>
@@ -676,7 +925,7 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- MODAL 3: CONFIRMAÇÃO DE LIMPEZA DA BASE -->
+    <!-- MODAL 6: CONFIRMAÇÃO DE LIMPEZA DA BASE -->
     <!-- ============================================================ -->
     <div id="clearConfirmModal" class="fixed inset-0 z-50 hidden bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="glass-modal max-w-sm w-full p-6 rounded-2xl shadow-2xl space-y-4 text-center">
@@ -706,8 +955,7 @@
         <span id="toastMessage">Operação realizada</span>
     </div>
 
-    <!-- Frontend Script -->
-    <script src="/static/js/dashboard.js?v=4.2"></script>
+    <!-- Frontend Script (Cache buster v5.0) -->
+    <script src="/static/js/dashboard.js?v=5.0"></script>
 </body>
 </html>
-

@@ -72,6 +72,36 @@ def init_db():
         cursor.execute("ALTER TABLE leads ADD COLUMN scheduled_at TEXT")
     if "meeting_notes" not in existing_cols:
         cursor.execute("ALTER TABLE leads ADD COLUMN meeting_notes TEXT")
+    if "assigned_to" not in existing_cols:
+        cursor.execute("ALTER TABLE leads ADD COLUMN assigned_to TEXT DEFAULT 'Jamilly'")
+        cursor.execute("UPDATE leads SET assigned_to = 'Jamilly' WHERE assigned_to IS NULL")
+    if "phone_type" not in existing_cols:
+        cursor.execute("ALTER TABLE leads ADD COLUMN phone_type TEXT DEFAULT 'unknown'")
+
+    # Table: Lead Notes / CRM Interaction History
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS lead_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            lead_id INTEGER NOT NULL,
+            operator_name TEXT DEFAULT 'Jamilly',
+            note_text TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (lead_id) REFERENCES leads (id) ON DELETE CASCADE
+        )
+    """)
+
+    # Table: Operators / SDR Team
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS operators (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            role TEXT DEFAULT 'SDR / Closer',
+            active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cursor.execute("INSERT OR IGNORE INTO operators (name, role) VALUES ('Jamilly', 'SDR / Closer')")
+    cursor.execute("INSERT OR IGNORE INTO operators (name, role) VALUES ('Marcos', 'Gestor de Vendas')")
 
     # Activity and Scraping Logs table
     cursor.execute("""
@@ -83,6 +113,15 @@ def init_db():
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    # Update existing phone_types if missing
+    cursor.execute("SELECT id, phone FROM leads WHERE phone_type IS NULL OR phone_type = 'unknown' OR phone_type = ''")
+    rows_to_update = cursor.fetchall()
+    if rows_to_update:
+        import pitch_generator
+        for r in rows_to_update:
+            ptype = pitch_generator.detect_phone_type(r["phone"])
+            cursor.execute("UPDATE leads SET phone_type = ? WHERE id = ?", (ptype, r["id"]))
 
     conn.commit()
     conn.close()
@@ -146,17 +185,23 @@ def save_lead(lead_data: Dict[str, Any]) -> int:
         conn.close()
         return existing["id"]
 
+    import pitch_generator
+    phone_type = lead_data.get("phone_type") or pitch_generator.detect_phone_type(lead_data.get("phone", ""))
+    assigned_to = lead_data.get("assigned_to") or "Jamilly"
+
     cursor.execute(
         """
         INSERT INTO leads (
             campaign_id, name, phone, clean_phone, address, rating, reviews_count,
             website, maps_url, qualification_status, qualification_detail,
             lead_score, lead_temperature, crm_status, notes,
+            assigned_to, phone_type,
             cold_call_script, whatsapp_script, created_at
         ) VALUES (
             :campaign_id, :name, :phone, :clean_phone, :address, :rating, :reviews_count,
             :website, :maps_url, :qualification_status, :qualification_detail,
             :lead_score, :lead_temperature, :crm_status, :notes,
+            :assigned_to, :phone_type,
             :cold_call_script, :whatsapp_script, CURRENT_TIMESTAMP
         )
         """,
@@ -173,9 +218,11 @@ def save_lead(lead_data: Dict[str, Any]) -> int:
             "qualification_status": lead_data.get("qualification_status", "Prioridade Crítica: Sem Site"),
             "qualification_detail": lead_data.get("qualification_detail", ""),
             "lead_score": int(lead_data.get("lead_score") or 50),
-            "lead_temperature": lead_data.get("lead_temperature", "⚡ Quente"),
+            "lead_temperature": lead_data.get("lead_temperature", "Alta Prioridade"),
             "crm_status": lead_data.get("crm_status", "Novo"),
             "notes": lead_data.get("notes", ""),
+            "assigned_to": assigned_to,
+            "phone_type": phone_type,
             "cold_call_script": lead_data.get("cold_call_script", ""),
             "whatsapp_script": lead_data.get("whatsapp_script", ""),
         },
@@ -243,6 +290,8 @@ def get_recent_logs(limit: int = 50, campaign_id: Optional[int] = None) -> List[
 
 def get_leads(campaign_id: Optional[int] = None,
               status_filter: Optional[str] = None,
+              operator_filter: Optional[str] = None,
+              phone_type_filter: Optional[str] = None,
               search: Optional[str] = None,
               sort_by: Optional[str] = None,
               limit: int = 500) -> List[Dict[str, Any]]:
@@ -269,10 +318,21 @@ def get_leads(campaign_id: Optional[int] = None,
             query += " AND crm_status = ?"
             params.append(status_filter)
 
+    if operator_filter and operator_filter != "all":
+        if operator_filter == "unassigned":
+            query += " AND (assigned_to IS NULL OR assigned_to = '')"
+        else:
+            query += " AND assigned_to = ?"
+            params.append(operator_filter)
+
+    if phone_type_filter and phone_type_filter != "all":
+        query += " AND phone_type = ?"
+        params.append(phone_type_filter)
+
     if search:
         search_param = f"%{search.strip()}%"
-        query += " AND (name LIKE ? OR phone LIKE ? OR address LIKE ? OR website LIKE ?)"
-        params.extend([search_param, search_param, search_param, search_param])
+        query += " AND (name LIKE ? OR phone LIKE ? OR address LIKE ? OR website LIKE ? OR notes LIKE ?)"
+        params.extend([search_param, search_param, search_param, search_param, search_param])
 
     # Sorting
     if sort_by == "score_desc":
@@ -291,8 +351,21 @@ def get_leads(campaign_id: Optional[int] = None,
 
     cursor.execute(query, params)
     rows = cursor.fetchall()
+    
+    leads = []
+    for r in rows:
+        lead_dict = dict(r)
+        # Fetch latest note for fast preview
+        cursor.execute("SELECT note_text, operator_name, created_at FROM lead_notes WHERE lead_id = ? ORDER BY id DESC LIMIT 1", (lead_dict["id"],))
+        last_note = cursor.fetchone()
+        lead_dict["latest_note"] = dict(last_note) if last_note else None
+        
+        cursor.execute("SELECT COUNT(*) as total FROM lead_notes WHERE lead_id = ?", (lead_dict["id"],))
+        lead_dict["notes_count"] = cursor.fetchone()["total"]
+        leads.append(lead_dict)
+
     conn.close()
-    return [dict(r) for r in rows]
+    return leads
 
 
 def get_kpis(campaign_id: Optional[int] = None) -> Dict[str, Any]:
@@ -408,9 +481,103 @@ def clear_all_leads():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM leads")
+    cursor.execute("DELETE FROM lead_notes")
     cursor.execute("DELETE FROM activity_logs")
     cursor.execute("DELETE FROM campaigns")
     conn.commit()
     conn.close()
+
+
+def get_lead_by_id(lead_id: int) -> Optional[Dict[str, Any]]:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM leads WHERE id = ?", (lead_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def add_lead_note(lead_id: int, note_text: str, operator_name: str = "Jamilly") -> int:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO lead_notes (lead_id, operator_name, note_text) VALUES (?, ?, ?)",
+        (lead_id, operator_name, note_text.strip()),
+    )
+    cursor.execute(
+        "UPDATE leads SET notes = ? WHERE id = ?",
+        (f"[{operator_name}] {note_text.strip()}", lead_id),
+    )
+    note_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return note_id
+
+
+def get_lead_notes(lead_id: int) -> List[Dict[str, Any]]:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT * FROM lead_notes WHERE lead_id = ? ORDER BY id DESC",
+        (lead_id,),
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_operators() -> List[Dict[str, Any]]:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM operators WHERE active = 1 ORDER BY id ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def add_operator(name: str, role: str = "SDR / Closer") -> int:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR IGNORE INTO operators (name, role) VALUES (?, ?)", (name.strip(), role.strip()))
+    op_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return op_id
+
+
+def assign_lead(lead_id: int, operator_name: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE leads SET assigned_to = ? WHERE id = ?", (operator_name, lead_id))
+    conn.commit()
+    conn.close()
+
+
+def assign_leads_bulk(lead_ids: List[int], operator_name: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    for lid in lead_ids:
+        cursor.execute("UPDATE leads SET assigned_to = ? WHERE id = ?", (operator_name, lid))
+    conn.commit()
+    conn.close()
+
+
+def get_todays_meetings(operator_name: Optional[str] = None) -> List[Dict[str, Any]]:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+
+    where = "WHERE scheduled_at LIKE ? AND scheduled_at IS NOT NULL"
+    params = [f"%{today_str}%"]
+
+    if operator_name and operator_name != "all":
+        where += " AND (assigned_to = ? OR assigned_to IS NULL)"
+        params.append(operator_name)
+
+    cursor.execute(f"SELECT * FROM leads {where} ORDER BY scheduled_at ASC", params)
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
 
 

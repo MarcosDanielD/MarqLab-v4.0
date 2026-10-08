@@ -72,6 +72,37 @@ def calculate_lead_score(
     return final_score, temperature
 
 
+def detect_phone_type(raw_phone: str) -> str:
+    """
+    Detects if Brazilian phone number is a mobile/WhatsApp (9 digits starting with 9)
+    or a landline/fixo (8 digits starting with 2, 3, 4, 5).
+    Returns 'whatsapp' or 'landline' or 'none'.
+    """
+    if not raw_phone:
+        return "none"
+    digits = re.sub(r"\D", "", raw_phone)
+    if digits.startswith("0"):
+        digits = digits[1:]
+    if digits.startswith("55"):
+        digits = digits[2:]
+
+    # Brazilian DDD + Number
+    if len(digits) >= 10:
+        local_num = digits[2:]
+        if len(local_num) == 9 and local_num.startswith("9"):
+            return "whatsapp"
+        elif len(local_num) == 8 and local_num[0] in ["2", "3", "4", "5"]:
+            return "landline"
+        elif len(local_num) == 9:
+            return "whatsapp"
+    elif len(digits) == 9 and digits.startswith("9"):
+        return "whatsapp"
+    elif len(digits) == 8:
+        return "landline"
+
+    return "unknown"
+
+
 def clean_phone_number(raw_phone: str) -> str:
     """Extracts numeric digits and formats for Brazilian WhatsApp (DDI 55 + DDD + Number)."""
     if not raw_phone:
@@ -90,7 +121,7 @@ def clean_phone_number(raw_phone: str) -> str:
 
 def generate_scripts(lead_data: Dict[str, Any], niche: str = "sua área", city: str = "") -> Dict[str, str]:
     """
-    Generates high-conversion Cold Call and WhatsApp outreach scripts
+    Generates high-conversion Cold Call and 3-Step WhatsApp outreach scripts
     specifically pitching a Landing Page / Redesign project for R$ 1.000,00.
     """
     name = lead_data.get("name", "Empresa")
@@ -98,6 +129,7 @@ def generate_scripts(lead_data: Dict[str, Any], niche: str = "sua área", city: 
     reviews = int(lead_data.get("reviews_count") or 0)
     phone = lead_data.get("phone", "")
     clean_phone = clean_phone_number(phone)
+    phone_type = detect_phone_type(phone)
     website = lead_data.get("website", "")
     qual_status = lead_data.get("qualification_status", "")
     qual_detail = lead_data.get("qualification_detail", "")
@@ -165,22 +197,63 @@ TRATAMENTO DE OBJECOES:
   -> Resposta: "Com certeza. Para facilitar seu dia a dia, posso enviar direto no seu WhatsApp com 3 pontos práticos que identifiquei?"
 """
 
-    # WhatsApp Outreach Script (Clean & Professional)
+    # 1. WhatsApp Passo 1 (Abordagem Inicial - Diagnóstico)
     whatsapp_text = (
-        f"Olá, tudo bem? Aqui é o [Seu Nome].\n\n"
+        f"Olá, tudo bem? Aqui é da equipe da Marq Lab.\n\n"
         f"Estava analisando as principais empresas de {niche} em {city or 'sua região'} e encontrei o perfil da *{name}* no Google Maps com ótima reputação ({rating:.1f} estrelas).\n\n"
         f"{wp_pain}\n\n"
         f"Desenvolvemos Landing Pages modernas, rápidas e com botão de WhatsApp integrado por taxa única de R$ 1.000,00 (sem mensalidades).\n\n"
         f"Preparei uma prévia de como ficaria a página da {name}. Posso te enviar aqui para você avaliar sem compromisso?"
     )
 
+    # 2. WhatsApp Passo 2 (Follow-up D+2 - Exemplo de case/conversão)
+    whatsapp_followup_1 = (
+        f"Olá, tudo bem? Passando rapidamente só para dar um retorno sobre a mensagem anterior.\n\n"
+        f"Recentemente reformulamos a presença web de outra empresa do mesmo segmento e eles aumentaram em mais de 40% os chamados recebidos no WhatsApp vindos do Google.\n\n"
+        f"Como o investimento na {name} é apenas R$ 1.000,00 pago uma única vez, um único cliente novo já cobre todo o projeto.\n\n"
+        f"Gostaria de ver o protótipo rápido que estruturei para vocês?"
+    )
+
+    # 3. WhatsApp Passo 3 (Follow-up D+5 - Quebra de Contato com Escassez)
+    whatsapp_followup_2 = (
+        f"Olá! Imagino que a rotina esteja corrida por aí na {name}.\n\n"
+        f"Estou fechando o cronograma de entregas de Landing Pages desta semana da Marq Lab e temos apenas 2 vagas com o valor promocional de R$ 1.000,00.\n\n"
+        f"Caso ainda faça sentido modernizar a captação de clientes de vocês este mês, me avise por aqui para garantirmos a sua vaga!"
+    )
+
+    # Resumo da Proposta Comercial em Texto
+    proposal_text = (
+        f"📋 *PROPOSTA COMERCIAL - MARQ LAB*\n"
+        f"*Cliente:* {name}\n"
+        f"*Projeto:* Landing Page Corporativa de Alta Conversão\n"
+        f"*Escopo:*\n"
+        f"• Design Moderno e 100% Responsivo para Celular\n"
+        f"• Botão de WhatsApp Flutuante com Mensagem Prévia\n"
+        f"• Certificado de Segurança SSL Incluso (HTTPS)\n"
+        f"• Otimização para Busca Local no Google Maps\n"
+        f"• Prazo de Entrega: até 5 dias úteis\n\n"
+        f"*Investimento:* R$ 1.000,00 (Valor Único)\n"
+        f"*Condição:* 50% de entrada (R$ 500) + 50% na aprovação final (R$ 500)\n\n"
+        f"Fico à disposição para iniciarmos o projeto hoje mesmo!"
+    )
+
     encoded_whatsapp_url = ""
+    encoded_followup_1_url = ""
+    encoded_followup_2_url = ""
     if clean_phone:
-        encoded_msg = urllib.parse.quote(whatsapp_text)
-        encoded_whatsapp_url = f"https://wa.me/{clean_phone}?text={encoded_msg}"
+        encoded_whatsapp_url = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(whatsapp_text)}"
+        encoded_followup_1_url = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(whatsapp_followup_1)}"
+        encoded_followup_2_url = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(whatsapp_followup_2)}"
 
     return {
         "cold_call_script": cold_call_script,
         "whatsapp_script": whatsapp_text,
+        "whatsapp_followup_1": whatsapp_followup_1,
+        "whatsapp_followup_2": whatsapp_followup_2,
         "whatsapp_url": encoded_whatsapp_url,
+        "followup_1_url": encoded_followup_1_url,
+        "followup_2_url": encoded_followup_2_url,
+        "proposal_text": proposal_text,
+        "phone_type": phone_type,
     }
+

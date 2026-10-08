@@ -1,34 +1,89 @@
 /**
- * Marq Lab - Modern Minimalist Frontend Engine (v3.0)
- * 4 Dedicated Menus (Mineração, Central de Leads, Agenda, Métricas & Funil),
- * Full company names without truncation, Agenda meeting removal, and Horizontal Sales Funnel Chart.
+ * Marq Lab - Modern B2B Growth Engine Frontend (v5.0)
+ * Features:
+ * - Collapsible Left Sidebar (Hamburger Toggle + LocalStorage memory)
+ * - Multi-Operator / SDR Team Management (Default: Jamilly, Marcos, dynamic SDRs)
+ * - Direct Lead Reassignment per SDR
+ * - Contact Type Visual Badges (Celular / WhatsApp vs Linha Fixa)
+ * - 1-Click Commercial Proposal in PDF & Text (R$ 1.000 / Landing Page)
+ * - Interaction Notes & Call History Timeline per Lead
+ * - Today's Meetings Top Banner Alert
+ * - Multi-Step Outreach Cadence (Cold Call, WhatsApp 1, Follow-up D+2, Follow-up D+5)
+ * - Adjustable Company Name Column Width
+ * - Horizontal Sales Funnel Chart & Diagnostic Donut Chart
  */
 
-// Application State
+// Global Application State
 let appState = {
     theme: localStorage.getItem('marq_theme') || 'dark',
     companyWidthMode: localStorage.getItem('marq_company_width') || 'normal',
+    sidebarCollapsed: localStorage.getItem('marq_sidebar_collapsed') === 'true',
+    activeOperator: localStorage.getItem('marq_active_operator') || 'Jamilly',
     currentView: 'mineracao',
     isRunning: false,
     currentLeads: [],
+    operators: [],
     statusChart: null,
     funnelChart: null,
     eventSource: null,
     activeLeadData: null,
     schedulingLeadId: null,
+    activeNotesLeadId: null,
+    activeProposalLead: null,
 };
 
 // DOM Ready initialization
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
+    initSidebarState();
     initCompanyWidth();
     setupEventListeners();
+    loadOperators();
     loadDashboardData();
+    loadTodaysMeetings();
     connectSSE();
 });
 
 // ----------------------------------------------------
-// COLUMN WIDTH CONTROLLER (NOME DA EMPRESA)
+// 1. SIDEBAR COLLAPSIBLE CONTROLLER (MENU ESQUERDO)
+// ----------------------------------------------------
+function initSidebarState() {
+    if (appState.sidebarCollapsed) {
+        document.body.classList.add('sidebar-collapsed');
+    } else {
+        document.body.classList.remove('sidebar-collapsed');
+    }
+}
+
+function toggleSidebarCollapse() {
+    // If mobile screen (< 1024px)
+    if (window.innerWidth < 1024) {
+        const isOpen = document.body.classList.toggle('sidebar-mobile-open');
+        const backdrop = document.getElementById('sidebarBackdrop');
+        if (backdrop) {
+            if (isOpen) {
+                backdrop.classList.remove('hidden');
+            } else {
+                backdrop.classList.add('hidden');
+            }
+        }
+        return;
+    }
+
+    // Desktop: toggle class on body
+    const isCollapsed = document.body.classList.toggle('sidebar-collapsed');
+    appState.sidebarCollapsed = isCollapsed;
+    localStorage.setItem('marq_sidebar_collapsed', isCollapsed ? 'true' : 'false');
+
+    // Trigger chart resize if visible
+    setTimeout(() => {
+        if (appState.funnelChart) appState.funnelChart.resize();
+        if (appState.statusChart) appState.statusChart.resize();
+    }, 320);
+}
+
+// ----------------------------------------------------
+// 2. COLUMN WIDTH CONTROLLER (NOME DA EMPRESA)
 // ----------------------------------------------------
 function initCompanyWidth() {
     updateCompanyWidthButtons();
@@ -88,9 +143,8 @@ function cycleCompanyWidth() {
     setCompanyWidth(sequence[nextIdx]);
 }
 
-
 // ----------------------------------------------------
-// THEME SWITCHER
+// 3. THEME SWITCHER
 // ----------------------------------------------------
 function initTheme() {
     const html = document.documentElement;
@@ -112,7 +166,7 @@ function toggleTheme() {
 }
 
 // ----------------------------------------------------
-// 4 DEDICATED MENUS / VIEW SWITCHER
+// 4. VIEW NAVIGATION SWITCHER (4 MENUS DEDICADOS)
 // ----------------------------------------------------
 function switchView(viewName) {
     appState.currentView = viewName;
@@ -125,13 +179,25 @@ function switchView(viewName) {
         metricas: document.getElementById('viewMetricas'),
     };
 
-    // Nav tabs
-    const tabs = {
-        mineracao: document.getElementById('navTabMineracao'),
-        prospeccao: document.getElementById('navTabProspeccao'),
-        agenda: document.getElementById('navTabAgenda'),
-        metricas: document.getElementById('navTabMetricas'),
+    // Sidebar items
+    const sideNavs = {
+        mineracao: document.getElementById('sideNavMineracao'),
+        prospeccao: document.getElementById('sideNavProspeccao'),
+        agenda: document.getElementById('sideNavAgenda'),
+        metricas: document.getElementById('sideNavMetricas'),
     };
+
+    // Update Header Title
+    const headerTitle = document.getElementById('headerViewTitle');
+    const titleMap = {
+        mineracao: 'Robô de Mineração',
+        prospeccao: 'Central de Leads & Prospecção',
+        agenda: 'Agenda de Reuniões & Follow-ups',
+        metricas: 'Métricas & Funil Comercial'
+    };
+    if (headerTitle && titleMap[viewName]) {
+        headerTitle.innerText = titleMap[viewName];
+    }
 
     // Toggle container display
     Object.keys(views).forEach(key => {
@@ -144,18 +210,25 @@ function switchView(viewName) {
         }
     });
 
-    // Toggle tab active classes
-    Object.keys(tabs).forEach(key => {
-        if (tabs[key]) {
+    // Toggle sidebar active styles
+    Object.keys(sideNavs).forEach(key => {
+        if (sideNavs[key]) {
             if (key === viewName) {
-                tabs[key].classList.add('active');
+                sideNavs[key].classList.add('active');
             } else {
-                tabs[key].classList.remove('active');
+                sideNavs[key].classList.remove('active');
             }
         }
     });
 
-    // View-specific actions
+    // On mobile, close sidebar after clicking nav item
+    if (window.innerWidth < 1024) {
+        document.body.classList.remove('sidebar-mobile-open');
+        const backdrop = document.getElementById('sidebarBackdrop');
+        if (backdrop) backdrop.classList.add('hidden');
+    }
+
+    // View-specific refreshes
     if (viewName === 'prospeccao') {
         loadLeadsTable();
     } else if (viewName === 'agenda') {
@@ -168,28 +241,190 @@ function switchView(viewName) {
     }
 }
 
-function toggleSidebarMenu() {
-    const drawer = document.getElementById('sidebarDrawer');
-    const overlay = document.getElementById('sidebarOverlay');
-    if (!drawer || !overlay) return;
-
-    const isClosed = drawer.classList.contains('translate-x-full');
-    if (isClosed) {
-        drawer.classList.remove('translate-x-full');
-        overlay.classList.remove('hidden');
-    } else {
-        drawer.classList.add('translate-x-full');
-        overlay.classList.add('hidden');
-    }
-}
-
 function setNiche(name) {
     const input = document.getElementById('inputNiche');
     if (input) input.value = name;
 }
 
 // ----------------------------------------------------
-// CHART.JS INITIALIZATION (HORIZONTAL FUNNEL & DONUT)
+// 5. SDR & OPERATOR MANAGEMENT
+// ----------------------------------------------------
+async function loadOperators() {
+    try {
+        const res = await fetch('/api/operators');
+        const data = await res.json();
+        if (!data.success) return;
+
+        appState.operators = data.operators || [];
+
+        // 1. Update Sidebar Operator Select
+        const selActive = document.getElementById('selectActiveOperator');
+        if (selActive) {
+            selActive.innerHTML = appState.operators.map(op => {
+                const isSelected = op.name === appState.activeOperator;
+                return `<option value="${escapeHtml(op.name)}" ${isSelected ? 'selected' : ''}>${escapeHtml(op.name)} (${escapeHtml(op.role || 'SDR')})</option>`;
+            }).join('');
+        }
+
+        // 2. Update Leads Table SDR Filter
+        const filterOp = document.getElementById('filterOperator');
+        if (filterOp) {
+            const currentFilterVal = filterOp.value;
+            filterOp.innerHTML = `
+                <option value="all">SDR: Todos</option>
+                ${appState.operators.map(op => `<option value="${escapeHtml(op.name)}">SDR: ${escapeHtml(op.name)}</option>`).join('')}
+                <option value="unassigned">Sem Atribuição</option>
+            `;
+            if (currentFilterVal) filterOp.value = currentFilterVal;
+        }
+
+        // 3. Update Header & Avatar
+        updateActiveOperatorUi(appState.activeOperator);
+
+        // 4. Update Team Modal list
+        renderOperatorsModalList();
+    } catch (err) {
+        console.error('Erro ao carregar operadores:', err);
+    }
+}
+
+function updateActiveOperatorUi(name) {
+    const headerOp = document.getElementById('headerOperatorName');
+    if (headerOp) headerOp.innerText = name;
+
+    const avatar = document.getElementById('sidebarOperatorAvatar');
+    if (avatar) avatar.innerText = name.charAt(0).toUpperCase();
+
+    const roleSpan = document.getElementById('sidebarOperatorRole');
+    if (roleSpan) {
+        const currentOp = appState.operators.find(o => o.name === name);
+        roleSpan.innerText = currentOp ? currentOp.role : 'SDR / Vendas';
+    }
+}
+
+function changeActiveOperator(opName) {
+    appState.activeOperator = opName;
+    localStorage.setItem('marq_active_operator', opName);
+    updateActiveOperatorUi(opName);
+    showToast(`Operador alterado para ${opName}`, 'info');
+}
+
+function openTeamModal() {
+    renderOperatorsModalList();
+    document.getElementById('teamModal').classList.remove('hidden');
+}
+
+function closeTeamModal() {
+    document.getElementById('teamModal').classList.add('hidden');
+}
+
+function renderOperatorsModalList() {
+    const container = document.getElementById('operatorsListContainer');
+    if (!container) return;
+
+    if (!appState.operators || appState.operators.length === 0) {
+        container.innerHTML = `<div class="text-xs text-slate-400 p-2 text-center">Nenhum operador cadastrado.</div>`;
+        return;
+    }
+
+    container.innerHTML = appState.operators.map(op => {
+        const isCurrent = op.name === appState.activeOperator;
+        return `
+            <div class="p-2.5 rounded-xl border border-slate-100 dark:border-darkborder bg-white dark:bg-darkcard flex items-center justify-between text-xs">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-brand-500/10 text-brand-500 font-bold flex items-center justify-center text-xs">
+                        ${op.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <strong class="text-slate-900 dark:text-white block">${escapeHtml(op.name)}</strong>
+                        <span class="text-[10px] text-slate-400">${escapeHtml(op.role)}</span>
+                    </div>
+                </div>
+                ${isCurrent ? `
+                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">Ativo</span>
+                ` : `
+                    <button onclick="changeActiveOperator('${escapeHtml(op.name)}'); closeTeamModal();" class="text-xs text-brand-500 hover:text-brand-600 font-semibold">
+                        Selecionar
+                    </button>
+                `}
+            </div>
+        `;
+    }).join('');
+}
+
+async function saveNewOperator() {
+    const nameInput = document.getElementById('newOperatorName');
+    const roleInput = document.getElementById('newOperatorRole');
+    const name = nameInput.value.trim();
+    const role = roleInput.value.trim() || 'SDR / Vendas';
+
+    if (!name) {
+        showToast('Informe o nome do vendedor/operador.', 'error');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/operators', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, role })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`Operador ${name} cadastrado com sucesso!`, 'success');
+            nameInput.value = '';
+            await loadOperators();
+        } else {
+            showToast(data.error || 'Erro ao cadastrar operador.', 'error');
+        }
+    } catch (err) {
+        showToast('Erro de comunicação: ' + err.message, 'error');
+    }
+}
+
+async function changeLeadOperator(leadId, opName) {
+    try {
+        const res = await fetch(`/api/lead/${leadId}/assign`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ operator: opName })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`Lead atribuído a ${opName}!`, 'success');
+        }
+    } catch (err) {
+        showToast('Erro ao atribuir operador: ' + err.message, 'error');
+    }
+}
+
+// ----------------------------------------------------
+// 6. TODAY'S MEETINGS ALERT BANNER
+// ----------------------------------------------------
+async function loadTodaysMeetings() {
+    try {
+        const res = await fetch('/api/meetings/today');
+        const data = await res.json();
+        if (!data.success) return;
+
+        const banner = document.getElementById('headerTodayBanner');
+        const text = document.getElementById('headerTodayText');
+        if (!banner || !text) return;
+
+        const meetings = data.meetings || [];
+        if (meetings.length > 0) {
+            text.innerText = `${meetings.length} reunião(ões) hoje!`;
+            banner.classList.remove('hidden');
+        } else {
+            banner.classList.add('hidden');
+        }
+    } catch (err) {
+        console.error('Erro ao verificar reuniões de hoje:', err);
+    }
+}
+
+// ----------------------------------------------------
+// 7. CHART.JS INITIALIZATION (HORIZONTAL FUNNEL & DONUT)
 // ----------------------------------------------------
 function initCharts() {
     const isDark = document.documentElement.classList.contains('dark');
@@ -229,7 +464,7 @@ function initCharts() {
         });
     }
 
-    // Chart 2: Horizontal Sales Funnel Chart (Substituiu os pontos dispersos)
+    // Chart 2: Horizontal Sales Funnel Chart
     const canvasFunnel = document.getElementById('chartFunnel');
     if (canvasFunnel && !appState.funnelChart) {
         const ctxFunnel = canvasFunnel.getContext('2d');
@@ -306,21 +541,29 @@ function updateChartsTheme() {
 }
 
 // ----------------------------------------------------
-// EVENT LISTENERS & FILTERING
+// 8. EVENT LISTENERS & FILTERING
 // ----------------------------------------------------
 function setupEventListeners() {
-    document.getElementById('themeToggleBtn').addEventListener('click', toggleTheme);
-    document.getElementById('btnStartScrape').addEventListener('click', startScrape);
-    document.getElementById('btnStopScrape').addEventListener('click', stopScrape);
+    const themeBtn = document.getElementById('themeToggleBtn');
+    if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
 
-    document.getElementById('toggleLogsBtn').addEventListener('click', () => {
-        const drawer = document.getElementById('terminalDrawer');
-        drawer.classList.toggle('hidden');
-    });
+    const btnStart = document.getElementById('btnStartScrape');
+    if (btnStart) btnStart.addEventListener('click', startScrape);
 
-    // Filters with debounce
+    const btnStop = document.getElementById('btnStopScrape');
+    if (btnStop) btnStop.addEventListener('click', stopScrape);
+
+    const logsBtn = document.getElementById('toggleLogsBtn');
+    if (logsBtn) {
+        logsBtn.addEventListener('click', () => {
+            const drawer = document.getElementById('terminalDrawer');
+            if (drawer) drawer.classList.toggle('hidden');
+        });
+    }
+
+    // Filter inputs with debounce
     let debounceTimer;
-    const filterInputs = ['filterSearch', 'filterStatus', 'filterCrm', 'filterSort'];
+    const filterInputs = ['filterSearch', 'filterStatus', 'filterCrm', 'filterOperator', 'filterPhoneType', 'filterSort'];
     filterInputs.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -334,7 +577,7 @@ function setupEventListeners() {
 }
 
 // ----------------------------------------------------
-// MINING OPERATIONS (START / STOP / SSE)
+// 9. MINING OPERATIONS (START / STOP / SSE)
 // ----------------------------------------------------
 async function startScrape() {
     const niche = document.getElementById('inputNiche').value.trim();
@@ -393,15 +636,15 @@ function setUiMiningRunning(running, target = 100) {
     const engineText = document.getElementById('engineStatusText');
 
     if (running) {
-        btnStart.classList.add('hidden');
-        btnStop.classList.remove('hidden');
-        progressContainer.classList.remove('hidden');
+        if (btnStart) btnStart.classList.add('hidden');
+        if (btnStop) btnStop.classList.remove('hidden');
+        if (progressContainer) progressContainer.classList.remove('hidden');
         if (engineText) engineText.innerText = 'Minerando...';
         if (engineBadge) engineBadge.querySelector('span:first-child').className = 'w-2 h-2 rounded-full bg-brand-500 animate-ping';
         updateProgressBar(0, target, 'Conectando ao Google Maps...');
     } else {
-        btnStart.classList.remove('hidden');
-        btnStop.classList.add('hidden');
+        if (btnStart) btnStart.classList.remove('hidden');
+        if (btnStop) btnStop.classList.add('hidden');
         if (engineText) engineText.innerText = 'Motor Pronto';
         if (engineBadge) engineBadge.querySelector('span:first-child').className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
     }
@@ -419,7 +662,7 @@ function updateProgressBar(count, target, currentLead = '') {
 }
 
 // ----------------------------------------------------
-// SERVER-SENT EVENTS (SSE) STREAMING
+// 10. SERVER-SENT EVENTS (SSE) STREAMING
 // ----------------------------------------------------
 function connectSSE() {
     if (appState.eventSource) {
@@ -503,7 +746,7 @@ function addTerminalLog(text) {
 }
 
 // ----------------------------------------------------
-// DASHBOARD DATA LOADERS (KPIS, CHARTS, LEADS)
+// 11. DASHBOARD DATA LOADERS (KPIS, CHARTS, LEADS)
 // ----------------------------------------------------
 async function loadDashboardData() {
     await Promise.all([loadKpis(), loadLeadsTable(), loadAgendaMeetings()]);
@@ -516,16 +759,18 @@ async function loadKpis() {
         if (!data.success) return;
 
         const k = data.kpis;
-        document.getElementById('kpiTotalLeads').innerText = k.total_leads;
-        document.getElementById('kpiSemSite').innerText = k.sem_site;
-        document.getElementById('kpiModernizacao').innerText = k.modernizacao;
+        const totalLeadsEl = document.getElementById('kpiTotalLeads');
+        if (totalLeadsEl) totalLeadsEl.innerText = k.total_leads;
 
-        // Header and drawer leads counters
-        const navLeadsCount = document.getElementById('navLeadsCount');
-        if (navLeadsCount) navLeadsCount.innerText = k.total_leads;
+        const semSiteEl = document.getElementById('kpiSemSite');
+        if (semSiteEl) semSiteEl.innerText = k.sem_site;
 
-        const drawerLeadsCount = document.getElementById('drawerLeadsCount');
-        if (drawerLeadsCount) drawerLeadsCount.innerText = k.total_leads;
+        const modEl = document.getElementById('kpiModernizacao');
+        if (modEl) modEl.innerText = k.modernizacao;
+
+        // Sidebar count
+        const sideLeadsCount = document.getElementById('sideLeadsCount');
+        if (sideLeadsCount) sideLeadsCount.innerText = k.total_leads;
 
         // Metrics view
         const elMetricPipe = document.getElementById('metricPipeline');
@@ -562,14 +807,18 @@ async function loadKpis() {
 
 async function loadLeadsTable() {
     try {
-        const search = document.getElementById('filterSearch').value.trim();
-        const status = document.getElementById('filterStatus').value;
-        const crm = document.getElementById('filterCrm').value;
-        const sort = document.getElementById('filterSort').value;
+        const search = document.getElementById('filterSearch') ? document.getElementById('filterSearch').value.trim() : '';
+        const status = document.getElementById('filterStatus') ? document.getElementById('filterStatus').value : 'all';
+        const crm = document.getElementById('filterCrm') ? document.getElementById('filterCrm').value : 'all';
+        const operator = document.getElementById('filterOperator') ? document.getElementById('filterOperator').value : 'all';
+        const phoneType = document.getElementById('filterPhoneType') ? document.getElementById('filterPhoneType').value : 'all';
+        const sort = document.getElementById('filterSort') ? document.getElementById('filterSort').value : 'score_desc';
 
         const params = new URLSearchParams({
             search: search,
             status: status !== 'all' ? status : (crm !== 'all' ? crm : 'all'),
+            operator: operator,
+            phone_type: phoneType,
             sort_by: sort
         });
 
@@ -579,7 +828,8 @@ async function loadLeadsTable() {
 
         appState.currentLeads = data.leads;
         renderLeadsTable(data.leads);
-        document.getElementById('tableShowingCount').innerText = data.leads.length;
+        const countSpan = document.getElementById('tableShowingCount');
+        if (countSpan) countSpan.innerText = data.leads.length;
     } catch (err) {
         console.error('Erro ao carregar tabela de leads:', err);
     }
@@ -592,7 +842,7 @@ function renderLeadsTable(leads) {
     if (!leads || leads.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="py-12 text-center text-slate-400">
+                <td colspan="8" class="py-12 text-center text-slate-400">
                     <i class="ph ph-magnifying-glass text-2xl mb-1"></i>
                     <p class="text-xs">Nenhum lead encontrado com os filtros selecionados.</p>
                 </td>
@@ -602,7 +852,7 @@ function renderLeadsTable(leads) {
     }
 
     tbody.innerHTML = leads.map(lead => {
-        // Clean Minimal Score Badge (No Emojis)
+        // Score Badge
         let scoreClass = 'badge-score-normal';
         let priorityLabel = 'Normal';
         if (lead.lead_score >= 80) {
@@ -623,7 +873,24 @@ function renderLeadsTable(leads) {
             qualBadge = `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">Site Ativo</span>`;
         }
 
-        // Scheduled Meeting Badge / Status indicator (with quick remove button)
+        // Phone Type Badge (WhatsApp vs Linha Fixa)
+        let phoneTypeBadge = '';
+        const pType = lead.phone_type || 'whatsapp';
+        if (pType === 'whatsapp') {
+            phoneTypeBadge = `
+                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <i class="ph-bold ph-whatsapp-logo text-[10px]"></i> Celular / Whats
+                </span>
+            `;
+        } else if (pType === 'landline') {
+            phoneTypeBadge = `
+                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-100 dark:bg-darkborder text-slate-500 dark:text-slate-400">
+                    <i class="ph-bold ph-phone text-[10px]"></i> Linha Fixa
+                </span>
+            `;
+        }
+
+        // Scheduled Meeting Badge with quick remove button
         let scheduleBadge = '';
         if (lead.scheduled_at) {
             scheduleBadge = `
@@ -637,7 +904,13 @@ function renderLeadsTable(leads) {
             `;
         }
 
-        // WhatsApp direct link
+        // Notes count badge
+        const notesCount = (lead.notes && Array.isArray(lead.notes)) ? lead.notes.length : (lead.notes_count || 0);
+        const notesBadge = notesCount > 0 ? `
+            <span class="ml-1 px-1.5 py-0.2 rounded-full text-[9px] font-extrabold bg-amber-500 text-white">${notesCount}</span>
+        ` : '';
+
+        // WhatsApp direct link button
         const whatsappBtn = lead.whatsapp_url ? `
             <a href="${lead.whatsapp_url}" target="_blank" class="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition shadow-sm" title="Abrir conversa no WhatsApp">
                 <i class="ph-bold ph-whatsapp-logo text-sm"></i>
@@ -648,9 +921,18 @@ function renderLeadsTable(leads) {
             </button>
         `;
 
+        // Operator assignment dropdown
+        const currentAssigned = lead.assigned_to || 'Jamilly';
+        const operatorOptions = appState.operators.length > 0 ? appState.operators.map(op => {
+            return `<option value="${escapeHtml(op.name)}" ${op.name === currentAssigned ? 'selected' : ''}>${escapeHtml(op.name)}</option>`;
+        }).join('') : `
+            <option value="Jamilly" ${currentAssigned === 'Jamilly' ? 'selected' : ''}>Jamilly</option>
+            <option value="Marcos" ${currentAssigned === 'Marcos' ? 'selected' : ''}>Marcos</option>
+        `;
+
         return `
-            <tr class="border-b border-slate-100 dark:border-darkborder/50">
-                <!-- Score (Sem emojis) -->
+            <tr class="border-b border-slate-100 dark:border-darkborder/50 hover:bg-slate-50/50 dark:hover:bg-darkcard2/30 transition-colors">
+                <!-- 1. Score -->
                 <td class="py-3 px-4 whitespace-nowrap">
                     <div class="flex flex-col gap-0.5">
                         <span class="px-2 py-0.5 rounded-md text-xs font-bold w-max ${scoreClass}">
@@ -660,7 +942,7 @@ function renderLeadsTable(leads) {
                     </div>
                 </td>
 
-                <!-- Empresa & Local (Nome Completo SEM CORTE & Ajustável) -->
+                <!-- 2. Empresa & Local -->
                 <td class="py-3 px-4 company-col-cell" style="${getCompanyColWidthStyle()}">
                     <div class="font-bold text-slate-900 dark:text-white leading-normal break-words text-[13px] whitespace-normal">
                         ${escapeHtml(lead.name)}
@@ -671,15 +953,18 @@ function renderLeadsTable(leads) {
                     </div>
                 </td>
 
-                <!-- Telefone -->
+                <!-- 3. Contato + Phone Type Badge -->
                 <td class="py-3 px-4 whitespace-nowrap font-mono text-xs">
-                    <div class="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-medium">
-                        <i class="ph ph-phone text-slate-400"></i>
-                        <span>${lead.phone || '<span class="text-slate-400 font-sans">Sem telefone</span>'}</span>
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-medium">
+                            <i class="ph ph-phone text-slate-400"></i>
+                            <span>${lead.phone || '<span class="text-slate-400 font-sans">Sem telefone</span>'}</span>
+                        </div>
+                        <div>${phoneTypeBadge}</div>
                     </div>
                 </td>
 
-                <!-- Google Maps Stats -->
+                <!-- 4. Google Maps Stats -->
                 <td class="py-3 px-4 whitespace-nowrap">
                     <div class="flex items-center gap-1 text-slate-800 dark:text-slate-200 font-bold">
                         <i class="ph-fill ph-star text-amber-400 text-xs"></i>
@@ -688,8 +973,8 @@ function renderLeadsTable(leads) {
                     </div>
                 </td>
 
-                <!-- Diagnóstico Web -->
-                <td class="py-3 px-4 min-w-[200px] max-w-[300px]">
+                <!-- 5. Diagnóstico Web -->
+                <td class="py-3 px-4 min-w-[180px] max-w-[260px]">
                     <div class="space-y-0.5">
                         <div>${qualBadge}</div>
                         <div class="text-[10px] text-slate-400 break-words leading-tight" title="${escapeHtml(lead.qualification_detail || '')}">
@@ -698,7 +983,14 @@ function renderLeadsTable(leads) {
                     </div>
                 </td>
 
-                <!-- Funil CRM & Agenda -->
+                <!-- 6. SDR Responsável -->
+                <td class="py-3 px-4 whitespace-nowrap">
+                    <select onchange="changeLeadOperator(${lead.id}, this.value)" class="px-2 py-1 rounded-lg text-[11px] font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer">
+                        ${operatorOptions}
+                    </select>
+                </td>
+
+                <!-- 7. Status & Agenda -->
                 <td class="py-3 px-4 whitespace-nowrap">
                     <select onchange="changeLeadCrmStatus(${lead.id}, this.value)" class="px-2 py-1 rounded-lg text-[11px] font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer">
                         <option value="Novo" ${lead.crm_status === 'Novo' ? 'selected' : ''}>Novo</option>
@@ -711,17 +1003,29 @@ function renderLeadsTable(leads) {
                     ${scheduleBadge}
                 </td>
 
-                <!-- Ações -->
+                <!-- 8. Ações Comerciais -->
                 <td class="py-3 px-4 whitespace-nowrap text-center">
-                    <div class="flex items-center justify-center gap-1.5">
+                    <div class="flex items-center justify-center gap-1">
                         <!-- Script Button -->
-                        <button onclick="openScriptModal(${lead.id})" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-brand-500/10 text-brand-600 dark:text-brand-400 hover:bg-brand-500 hover:text-white transition shadow-sm flex items-center gap-1" title="Ver roteiro comercial">
+                        <button onclick="openScriptModal(${lead.id})" class="px-2 py-1.5 rounded-lg text-xs font-semibold bg-brand-500/10 text-brand-600 dark:text-brand-400 hover:bg-brand-500 hover:text-white transition shadow-sm flex items-center gap-1" title="Ver roteiro comercial">
                             <i class="ph-bold ph-phone-call"></i>
                             <span>Script</span>
                         </button>
 
-                        <!-- Agenda Button -->
-                        <button onclick="openScheduleModal(${lead.id}, '${escapeHtml(lead.name)}')" class="p-2 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white transition shadow-sm" title="Agendar Reunião ou Call com o lead">
+                        <!-- Notes Button -->
+                        <button onclick="openNotesModal(${lead.id}, '${escapeHtml(lead.name)}')" class="px-2 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500 hover:text-white transition shadow-sm flex items-center gap-0.5" title="Anotações e Histórico de Ligações">
+                            <i class="ph-bold ph-note-pencil"></i>
+                            <span>Notas</span>
+                            ${notesBadge}
+                        </button>
+
+                        <!-- Proposal PDF Button -->
+                        <button onclick="openProposalModal(${lead.id})" class="p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 hover:bg-indigo-600 hover:text-white transition shadow-sm" title="Gerar Proposta Comercial PDF">
+                            <i class="ph-bold ph-file-pdf text-sm"></i>
+                        </button>
+
+                        <!-- Schedule Call Button -->
+                        <button onclick="openScheduleModal(${lead.id}, '${escapeHtml(lead.name)}')" class="p-1.5 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-600 hover:text-white transition shadow-sm" title="Agendar Reunião ou Call com o lead">
                             <i class="ph-bold ph-calendar-plus text-sm"></i>
                         </button>
 
@@ -735,7 +1039,7 @@ function renderLeadsTable(leads) {
 }
 
 // ----------------------------------------------------
-// AGENDA DE REUNIÕES (CARDS, REMOÇÃO & MANAGEMENT)
+// 12. AGENDA DE REUNIÕES (CARDS & MANAGEMENT)
 // ----------------------------------------------------
 async function loadAgendaMeetings() {
     try {
@@ -747,11 +1051,8 @@ async function loadAgendaMeetings() {
         const count = meetings.length;
 
         // Update counters
-        const navCount = document.getElementById('navAgendaCount');
-        if (navCount) navCount.innerText = count;
-
-        const drawerCount = document.getElementById('drawerAgendaCount');
-        if (drawerCount) drawerCount.innerText = count;
+        const sideCount = document.getElementById('sideAgendaCount');
+        if (sideCount) sideCount.innerText = count;
 
         const kpiCount = document.getElementById('kpiAgendados');
         if (kpiCount) kpiCount.innerText = count;
@@ -781,6 +1082,7 @@ async function loadAgendaMeetings() {
                             </span>
                             <h4 class="font-bold text-sm text-slate-900 dark:text-white mt-1.5 break-words">${escapeHtml(m.name)}</h4>
                             <p class="text-xs text-slate-400 font-mono">${m.phone || 'Sem telefone'}</p>
+                            <span class="text-[10px] text-slate-400 block mt-0.5">SDR: <strong>${escapeHtml(m.assigned_to || 'Jamilly')}</strong></span>
                         </div>
                         <div class="text-right">
                             <span class="text-xs font-extrabold text-indigo-600 dark:text-indigo-400 block">${escapeHtml(m.scheduled_at)}</span>
@@ -807,6 +1109,12 @@ async function loadAgendaMeetings() {
                         </div>
 
                         <div class="flex items-center gap-1.5">
+                            <!-- Button: Notes -->
+                            <button onclick="openNotesModal(${m.id}, '${escapeHtml(m.name)}')" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-600 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 flex items-center gap-1 transition" title="Anotações da Call">
+                                <i class="ph-bold ph-note-pencil"></i>
+                                <span>Notas</span>
+                            </button>
+
                             <!-- Button: Remove / Unschedule Meeting -->
                             <button onclick="unscheduleMeeting(${m.id})" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 flex items-center gap-1 transition" title="Remover da Agenda">
                                 <i class="ph-bold ph-calendar-x text-sm"></i>
@@ -876,6 +1184,7 @@ async function saveMeetingSchedule() {
             closeScheduleModal();
             loadLeadsTable();
             loadAgendaMeetings();
+            loadTodaysMeetings();
             loadKpis();
         } else {
             showToast(data.error || 'Erro ao agendar.', 'error');
@@ -904,6 +1213,7 @@ async function unscheduleMeeting(leadId, askConfirm = true) {
             showToast('Reunião removida da agenda com sucesso!', 'success');
             loadAgendaMeetings();
             loadLeadsTable();
+            loadTodaysMeetings();
             loadKpis();
         } else {
             showToast('Erro ao remover reunião.', 'error');
@@ -913,28 +1223,104 @@ async function unscheduleMeeting(leadId, askConfirm = true) {
     }
 }
 
-
 // ----------------------------------------------------
-// CLEAR DATABASE CONFIRMATION & EXECUTION
+// 13. INTERACTION NOTES & CRM TIMELINE
 // ----------------------------------------------------
-function confirmClearLeads() {
-    document.getElementById('clearConfirmModal').classList.remove('hidden');
-}
+async function openNotesModal(leadId, leadName) {
+    appState.activeNotesLeadId = leadId;
+    const nameEl = document.getElementById('notesModalCompanyName');
+    if (nameEl) nameEl.innerText = leadName;
 
-function closeClearModal() {
-    document.getElementById('clearConfirmModal').classList.add('hidden');
-}
+    const input = document.getElementById('newNoteInput');
+    if (input) input.value = '';
 
-async function executeClearLeads() {
+    const container = document.getElementById('notesListContainer');
+    if (container) container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Carregando anotações...</div>`;
+
+    document.getElementById('notesModal').classList.remove('hidden');
+
     try {
-        const res = await fetch('/api/leads/clear', { method: 'POST' });
+        const res = await fetch(`/api/lead/${leadId}/notes`);
         const data = await res.json();
         if (data.success) {
-            showToast('Base de leads e histórico limpos com sucesso!', 'success');
-            closeClearModal();
-            loadDashboardData();
+            renderNotesList(data.notes || []);
+        }
+    } catch (err) {
+        if (container) container.innerHTML = `<div class="text-center text-rose-500 text-xs">Erro ao carregar histórico.</div>`;
+    }
+}
+
+function closeNotesModal() {
+    document.getElementById('notesModal').classList.add('hidden');
+    appState.activeNotesLeadId = null;
+}
+
+function renderNotesList(notes) {
+    const container = document.getElementById('notesListContainer');
+    if (!container) return;
+
+    if (!notes || notes.length === 0) {
+        container.innerHTML = `
+            <div class="py-8 text-center text-slate-400 text-xs space-y-1">
+                <i class="ph ph-note text-2xl"></i>
+                <p>Nenhuma anotação registrada ainda.</p>
+                <p class="text-[10px]">Registre o que o cliente disse na ligação ou no WhatsApp.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = notes.map(n => {
+        return `
+            <div class="p-3 rounded-xl bg-slate-50 dark:bg-darkcard2 border border-slate-100 dark:border-darkborder space-y-1">
+                <div class="flex items-center justify-between text-[10px] text-slate-400">
+                    <span class="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                        <i class="ph-bold ph-user text-brand-500"></i> ${escapeHtml(n.operator_name || 'Jamilly')}
+                    </span>
+                    <span>${escapeHtml(n.created_at || '')}</span>
+                </div>
+                <p class="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-sans">
+                    ${escapeHtml(n.note_text)}
+                </p>
+            </div>
+        `;
+    }).join('');
+}
+
+async function saveNewNote() {
+    if (!appState.activeNotesLeadId) return;
+
+    const input = document.getElementById('newNoteInput');
+    const text = input ? input.value.trim() : '';
+
+    if (!text) {
+        showToast('Digite uma anotação antes de salvar.', 'error');
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/lead/${appState.activeNotesLeadId}/notes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                note_text: text,
+                operator: appState.activeOperator || 'Jamilly'
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Anotação registrada com sucesso!', 'success');
+            if (input) input.value = '';
+
+            // Refresh notes list
+            const resNotes = await fetch(`/api/lead/${appState.activeNotesLeadId}/notes`);
+            const dataNotes = await resNotes.json();
+            if (dataNotes.success) {
+                renderNotesList(dataNotes.notes || []);
+            }
+            loadLeadsTable();
         } else {
-            showToast('Erro ao limpar base.', 'error');
+            showToast(data.error || 'Erro ao salvar anotação.', 'error');
         }
     } catch (err) {
         showToast('Erro de comunicação: ' + err.message, 'error');
@@ -942,7 +1328,163 @@ async function executeClearLeads() {
 }
 
 // ----------------------------------------------------
-// CRM STATUS & SCRIPT MODAL ACTIONS
+// 14. 1-CLICK COMMERCIAL PROPOSAL IN PDF & TEXT
+// ----------------------------------------------------
+async function openProposalModal(leadId) {
+    try {
+        const res = await fetch(`/api/lead/${leadId}/script`);
+        const data = await res.json();
+        if (!data.success) {
+            showToast('Erro ao carregar dados da proposta.', 'error');
+            return;
+        }
+
+        const lead = data.lead;
+        appState.activeProposalLead = lead;
+        appState.activeLeadData = data;
+
+        document.getElementById('proposalModalCompanyName').innerText = lead.name;
+        document.getElementById('proposalModalOperator').innerText = lead.assigned_to || appState.activeOperator || 'Jamilly';
+
+        const printLink = document.getElementById('proposalPrintLink');
+        if (printLink) {
+            printLink.href = `/lead/${leadId}/proposal_print`;
+        }
+
+        document.getElementById('proposalModal').classList.remove('hidden');
+    } catch (err) {
+        showToast('Erro ao abrir proposta: ' + err.message, 'error');
+    }
+}
+
+function closeProposalModal() {
+    document.getElementById('proposalModal').classList.add('hidden');
+    appState.activeProposalLead = null;
+}
+
+function copyProposalTextFromModal() {
+    if (!appState.activeLeadData || !appState.activeLeadData.proposal_text) {
+        showToast('Texto da proposta indisponível.', 'error');
+        return;
+    }
+
+    navigator.clipboard.writeText(appState.activeLeadData.proposal_text).then(() => {
+        showToast('Proposta completa copiada para a área de transferência!', 'success');
+    }).catch(() => {
+        showToast('Não foi possível copiar.', 'error');
+    });
+}
+
+// ----------------------------------------------------
+// 15. SCRIPT MODAL (COLD CALL + WHATSAPP CADENCE)
+// ----------------------------------------------------
+async function openScriptModal(leadId) {
+    try {
+        const res = await fetch(`/api/lead/${leadId}/script`);
+        const data = await res.json();
+        if (!data.success) {
+            showToast('Erro ao carregar roteiro do lead.', 'error');
+            return;
+        }
+
+        const lead = data.lead;
+        appState.activeLeadData = data;
+
+        document.getElementById('modalCompanyName').innerText = lead.name;
+        document.getElementById('modalSubtitle').innerText = `${lead.qualification_status} • Score: ${lead.lead_score} pts • ${lead.phone || 'Sem telefone'} • SDR: ${lead.assigned_to || 'Jamilly'}`;
+
+        document.getElementById('modalColdCallText').value = data.cold_call_script;
+        document.getElementById('modalWhatsAppText').value = data.whatsapp_script;
+        document.getElementById('modalFollowup1Text').value = data.whatsapp_followup_1 || '';
+        document.getElementById('modalFollowup2Text').value = data.whatsapp_followup_2 || '';
+        document.getElementById('modalProposalPlainText').value = data.proposal_text || '';
+
+        // WhatsApp links
+        const wpLink = document.getElementById('modalWhatsAppLink');
+        if (data.whatsapp_url) {
+            wpLink.href = data.whatsapp_url;
+            wpLink.classList.remove('hidden');
+        } else {
+            wpLink.classList.add('hidden');
+        }
+
+        const fu1Link = document.getElementById('modalFollowup1Link');
+        if (fu1Link) {
+            if (data.followup_1_url) {
+                fu1Link.href = data.followup_1_url;
+                fu1Link.classList.remove('hidden');
+            } else {
+                fu1Link.classList.add('hidden');
+            }
+        }
+
+        const fu2Link = document.getElementById('modalFollowup2Link');
+        if (fu2Link) {
+            if (data.followup_2_url) {
+                fu2Link.href = data.followup_2_url;
+                fu2Link.classList.remove('hidden');
+            } else {
+                fu2Link.classList.add('hidden');
+            }
+        }
+
+        switchModalTab('coldcall');
+        document.getElementById('scriptModal').classList.remove('hidden');
+    } catch (err) {
+        showToast('Erro ao abrir script: ' + err.message, 'error');
+    }
+}
+
+function closeScriptModal() {
+    document.getElementById('scriptModal').classList.add('hidden');
+}
+
+function switchModalTab(tab) {
+    const tabs = ['coldcall', 'whatsapp', 'followup1', 'followup2', 'proposalText'];
+    const tabBtns = {
+        coldcall: document.getElementById('tabColdCallBtn'),
+        whatsapp: document.getElementById('tabWhatsAppBtn'),
+        followup1: document.getElementById('tabFollowup1Btn'),
+        followup2: document.getElementById('tabFollowup2Btn'),
+        proposalText: document.getElementById('tabProposalTextBtn'),
+    };
+    const tabContents = {
+        coldcall: document.getElementById('modalColdCallContent'),
+        whatsapp: document.getElementById('modalWhatsAppContent'),
+        followup1: document.getElementById('modalFollowup1Content'),
+        followup2: document.getElementById('modalFollowup2Content'),
+        proposalText: document.getElementById('modalProposalTextContent'),
+    };
+
+    tabs.forEach(t => {
+        const btn = tabBtns[t];
+        const content = tabContents[t];
+        if (!btn || !content) return;
+
+        if (t === tab) {
+            btn.className = 'pb-2 border-b-2 border-brand-500 text-brand-600 dark:text-brand-400 flex items-center gap-1.5 px-2';
+            content.classList.remove('hidden');
+        } else {
+            btn.className = 'pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center gap-1.5 px-2';
+            content.classList.add('hidden');
+        }
+    });
+}
+
+function copyToClipboard(elementId) {
+    const textEl = document.getElementById(elementId);
+    if (!textEl) return;
+    textEl.select();
+    navigator.clipboard.writeText(textEl.value).then(() => {
+        showToast('Copiado para a área de transferência!', 'success');
+    }).catch(() => {
+        document.execCommand('copy');
+        showToast('Copiado com sucesso!', 'success');
+    });
+}
+
+// ----------------------------------------------------
+// 16. CRM STATUS & CLEAR DATABASE
 // ----------------------------------------------------
 async function changeLeadCrmStatus(leadId, newStatus) {
     try {
@@ -961,75 +1503,32 @@ async function changeLeadCrmStatus(leadId, newStatus) {
     }
 }
 
-async function openScriptModal(leadId) {
+function confirmClearLeads() {
+    document.getElementById('clearConfirmModal').classList.remove('hidden');
+}
+
+function closeClearModal() {
+    document.getElementById('clearConfirmModal').classList.add('hidden');
+}
+
+async function executeClearLeads() {
     try {
-        const res = await fetch(`/api/lead/${leadId}/script`);
+        const res = await fetch('/api/leads/clear', { method: 'POST' });
         const data = await res.json();
-        if (!data.success) {
-            showToast('Erro ao carregar roteiro do lead.', 'error');
-            return;
-        }
-
-        const lead = data.lead;
-        appState.activeLeadData = data;
-
-        document.getElementById('modalCompanyName').innerText = lead.name;
-        document.getElementById('modalSubtitle').innerText = `${lead.qualification_status} • Score: ${lead.lead_score} pts • ${lead.phone || 'Sem telefone'}`;
-        document.getElementById('modalColdCallText').value = data.cold_call_script;
-        document.getElementById('modalWhatsAppText').value = data.whatsapp_script;
-
-        const wpLink = document.getElementById('modalWhatsAppLink');
-        if (data.whatsapp_url) {
-            wpLink.href = data.whatsapp_url;
-            wpLink.classList.remove('hidden');
+        if (data.success) {
+            showToast('Base de leads e histórico limpos com sucesso!', 'success');
+            closeClearModal();
+            loadDashboardData();
         } else {
-            wpLink.classList.add('hidden');
+            showToast(data.error || 'Erro ao limpar base.', 'error');
         }
-
-        switchModalTab('coldcall');
-        document.getElementById('scriptModal').classList.remove('hidden');
     } catch (err) {
-        showToast('Erro ao abrir script: ' + err.message, 'error');
+        showToast('Erro de comunicação: ' + err.message, 'error');
     }
-}
-
-function closeScriptModal() {
-    document.getElementById('scriptModal').classList.add('hidden');
-}
-
-function switchModalTab(tab) {
-    const tabCold = document.getElementById('tabColdCallBtn');
-    const tabWp = document.getElementById('tabWhatsAppBtn');
-    const contentCold = document.getElementById('modalColdCallContent');
-    const contentWp = document.getElementById('modalWhatsAppContent');
-
-    if (tab === 'coldcall') {
-        tabCold.className = 'pb-2 border-b-2 border-brand-500 text-brand-600 dark:text-brand-400 flex items-center gap-1.5';
-        tabWp.className = 'pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center gap-1.5';
-        contentCold.classList.remove('hidden');
-        contentWp.classList.add('hidden');
-    } else {
-        tabCold.className = 'pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center gap-1.5';
-        tabWp.className = 'pb-2 border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5';
-        contentCold.classList.add('hidden');
-        contentWp.classList.remove('hidden');
-    }
-}
-
-function copyToClipboard(elementId) {
-    const textEl = document.getElementById(elementId);
-    if (!textEl) return;
-    textEl.select();
-    navigator.clipboard.writeText(textEl.value).then(() => {
-        showToast('Copiado para a área de transferência!', 'success');
-    }).catch(() => {
-        document.execCommand('copy');
-        showToast('Copiado com sucesso!', 'success');
-    });
 }
 
 // ----------------------------------------------------
-// TOAST NOTIFICATIONS & UTILITIES
+// 17. TOAST NOTIFICATIONS & UTILITIES
 // ----------------------------------------------------
 function showToast(message, type = 'info') {
     const toast = document.getElementById('toastNotification');

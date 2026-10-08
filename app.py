@@ -116,24 +116,30 @@ def sse_stream():
 def list_leads():
     campaign_id = request.args.get("campaign_id", type=int)
     status_filter = request.args.get("status", "all")
+    operator_filter = request.args.get("operator", "all")
+    phone_type_filter = request.args.get("phone_type", "all")
     search = request.args.get("search", "")
     sort_by = request.args.get("sort_by", "score_desc")
 
     leads = database.get_leads(
         campaign_id=campaign_id,
         status_filter=status_filter,
+        operator_filter=operator_filter,
+        phone_type_filter=phone_type_filter,
         search=search,
         sort_by=sort_by,
         limit=500
     )
 
-    # Attach dynamic whatsapp URL
+    # Attach dynamic whatsapp URL and phone_type detection
     for lead in leads:
         clean_phone = lead.get("clean_phone") or pitch_generator.clean_phone_number(lead.get("phone", ""))
         lead["whatsapp_url"] = (
             f"https://wa.me/{clean_phone}?text={pitch_generator.urllib.parse.quote(lead.get('whatsapp_script') or '')}"
             if clean_phone else ""
         )
+        if not lead.get("phone_type") or lead.get("phone_type") == "unknown":
+            lead["phone_type"] = pitch_generator.detect_phone_type(lead.get("phone", ""))
 
     return jsonify({"success": True, "total": len(leads), "leads": leads})
 
@@ -220,24 +226,105 @@ def list_meetings():
 
 @app.route("/api/lead/<int:lead_id>/script", methods=["GET"])
 def get_lead_script(lead_id):
-    leads = database.get_leads(limit=1000)
-    lead = next((l for l in leads if l["id"] == lead_id), None)
+    lead = database.get_lead_by_id(lead_id)
     if not lead:
         return jsonify({"success": False, "error": "Lead não encontrado"}), 404
 
     clean_phone = lead.get("clean_phone") or pitch_generator.clean_phone_number(lead.get("phone", ""))
-    whatsapp_url = (
-        f"https://wa.me/{clean_phone}?text={pitch_generator.urllib.parse.quote(lead.get('whatsapp_script') or '')}"
-        if clean_phone else ""
-    )
+    scripts = pitch_generator.generate_scripts(lead, niche="sua área", city=lead.get("address", ""))
+    notes = database.get_lead_notes(lead_id)
 
     return jsonify({
         "success": True,
         "lead": lead,
-        "cold_call_script": lead.get("cold_call_script"),
-        "whatsapp_script": lead.get("whatsapp_script"),
-        "whatsapp_url": whatsapp_url,
+        "cold_call_script": lead.get("cold_call_script") or scripts["cold_call_script"],
+        "whatsapp_script": lead.get("whatsapp_script") or scripts["whatsapp_script"],
+        "whatsapp_followup_1": scripts["whatsapp_followup_1"],
+        "whatsapp_followup_2": scripts["whatsapp_followup_2"],
+        "whatsapp_url": scripts["whatsapp_url"],
+        "followup_1_url": scripts["followup_1_url"],
+        "followup_2_url": scripts["followup_2_url"],
+        "proposal_text": scripts["proposal_text"],
+        "phone_type": lead.get("phone_type") or scripts["phone_type"],
+        "notes": notes,
     })
+
+
+@app.route("/api/lead/<int:lead_id>/assign", methods=["POST"])
+def assign_lead_api(lead_id):
+    data = request.get_json() or {}
+    operator = data.get("operator", "Jamilly").strip()
+    database.assign_lead(lead_id, operator)
+    database.add_log(f"Lead #{lead_id} atribuído ao operador '{operator}'.", "INFO")
+    return jsonify({"success": True, "lead_id": lead_id, "operator": operator})
+
+
+@app.route("/api/leads/assign_bulk", methods=["POST"])
+def assign_leads_bulk_api():
+    data = request.get_json() or {}
+    lead_ids = data.get("lead_ids", [])
+    operator = data.get("operator", "Jamilly").strip()
+    if not lead_ids:
+        return jsonify({"success": False, "error": "Nenhum lead selecionado"}), 400
+
+    database.assign_leads_bulk(lead_ids, operator)
+    database.add_log(f"{len(lead_ids)} leads atribuídos a '{operator}'.", "INFO")
+    return jsonify({"success": True, "count": len(lead_ids), "operator": operator})
+
+
+@app.route("/api/lead/<int:lead_id>/notes", methods=["GET", "POST"])
+def lead_notes_api(lead_id):
+    if request.method == "POST":
+        data = request.get_json() or {}
+        note_text = data.get("note_text", "").strip()
+        operator = data.get("operator", "Jamilly").strip()
+        if not note_text:
+            return jsonify({"success": False, "error": "Texto da anotação vazio."}), 400
+
+        note_id = database.add_lead_note(lead_id, note_text, operator)
+        return jsonify({"success": True, "note_id": note_id})
+    else:
+        notes = database.get_lead_notes(lead_id)
+        return jsonify({"success": True, "notes": notes})
+
+
+@app.route("/api/operators", methods=["GET", "POST"])
+def operators_api():
+    if request.method == "POST":
+        data = request.get_json() or {}
+        name = data.get("name", "").strip()
+        role = data.get("role", "SDR / Closer").strip()
+        if not name:
+            return jsonify({"success": False, "error": "Nome obrigatório."}), 400
+
+        op_id = database.add_operator(name, role)
+        return jsonify({"success": True, "id": op_id, "name": name, "role": role})
+    else:
+        ops = database.get_operators()
+        return jsonify({"success": True, "operators": ops})
+
+
+@app.route("/api/meetings/today", methods=["GET"])
+def todays_meetings_api():
+    operator = request.args.get("operator", "all")
+    meetings = database.get_todays_meetings(operator)
+    return jsonify({"success": True, "total": len(meetings), "meetings": meetings})
+
+
+@app.route("/lead/<int:lead_id>/proposal_print", methods=["GET"])
+def proposal_print_view(lead_id):
+    lead = database.get_lead_by_id(lead_id)
+    if not lead:
+        return "Lead não encontrado", 404
+
+    scripts = pitch_generator.generate_scripts(lead, niche="sua área", city=lead.get("address", ""))
+    return render_template(
+        "proposal_print.html",
+        lead=lead,
+        scripts=scripts,
+        now_date=datetime.now().strftime("%d/%m/%Y")
+    )
+
 
 
 @app.route("/api/logs", methods=["GET"])

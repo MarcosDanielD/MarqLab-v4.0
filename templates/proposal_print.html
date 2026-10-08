@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proposta Comercial - {{ lead.name }} | Marq Lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        body {
+            background-color: #0f172a;
+            color: #1e293b;
+            padding: 30px 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .actions-bar {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(8px);
+            padding: 12px 20px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-print {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+        }
+
+        .btn-print:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+        }
+
+        .btn-close {
+            background: rgba(255, 255, 255, 0.08);
+            color: #cbd5e1;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .proposal-paper {
+            width: 100%;
+            max-width: 800px;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+            padding: 45px 50px;
+            color: #0f172a;
+            position: relative;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 25px;
+            margin-bottom: 25px;
+        }
+
+        .logo-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-dot {
+            width: 9px;
+            height: 9px;
+            background: #4f46e5;
+            border-radius: 50%;
+        }
+
+        .logo-tag {
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 2px;
+        }
+
+        .meta-info {
+            text-align: right;
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.5;
+        }
+
+        .meta-number {
+            font-family: monospace;
+            font-weight: 700;
+            color: #4f46e5;
+            font-size: 14px;
+        }
+
+        .client-box {
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            padding: 16px 20px;
+            margin-bottom: 25px;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 15px;
+        }
+
+        .box-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #94a3b8;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .box-val {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .box-sub {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #4f46e5;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .diagnosis-card {
+            background: #fef2f2;
+            border-left: 4px solid #ef4444;
+            padding: 14px 18px;
+            border-radius: 0 10px 10px 0;
+            font-size: 12px;
+            color: #991b1b;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .deliverables-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .deliverable-item {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 12px;
+            color: #334155;
+            line-height: 1.4;
+        }
+
+        .deliverable-icon {
+            color: #10b981;
+            font-size: 16px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .price-card {
+            background: linear-gradient(135deg, #f8fafc, #ede9fe);
+            border: 2px solid #818cf8;
+            border-radius: 14px;
+            padding: 22px 25px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .price-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #6366f1;
+            letter-spacing: 0.5px;
+        }
+
+        .price-val {
+            font-size: 32px;
+            font-weight: 800;
+            color: #1e1b4b;
+        }
+
+        .price-desc {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        .payment-terms {
+            text-align: right;
+            font-size: 12px;
+            color: #475569;
+            line-height: 1.6;
+        }
+
+        .payment-badge {
+            display: inline-block;
+            background: #dcfce7;
+            color: #15803d;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .footer {
+            border-top: 1px solid #e2e8f0;
+            padding-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        @media print {
+            body {
+                background: #fff;
+                padding: 0;
+            }
+            .actions-bar {
+                display: none !important;
+            }
+            .proposal-paper {
+                box-shadow: none;
+                border-radius: 0;
+                padding: 20px 30px;
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Action Bar (Hidden on Print) -->
+    <div class="actions-bar no-print">
+        <div style="font-size: 13px; font-weight: 600;">
+            <i class="ph-bold ph-file-text"></i> Visualização de Proposta Comercial
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button onclick="window.print()" class="btn-action btn-print">
+                <i class="ph-bold ph-printer"></i> Imprimir / Salvar em PDF
+            </button>
+            <button onclick="window.close()" class="btn-action btn-close">
+                <i class="ph-bold ph-x"></i> Fechar
+            </button>
+        </div>
+    </div>
+
+    <!-- Printable Paper -->
+    <div class="proposal-paper">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <div class="logo-title">
+                    MARQ LAB <span class="logo-dot"></span>
+                </div>
+                <div class="logo-tag">Performance Digital & Landing Pages</div>
+            </div>
+            <div class="meta-info">
+                <div>Proposta: <span class="meta-number">#ML-2026-{{ "%04d"|format(lead.id) }}</span></div>
+                <div>Data: <strong>{{ now_date }}</strong></div>
+                <div>Consultora: <strong>{{ lead.assigned_to or 'Jamilly' }}</strong></div>
+            </div>
+        </div>
+
+        <!-- Client Info -->
+        <div class="client-box">
+            <div>
+                <div class="box-label">Empresa Solicitante</div>
+                <div class="box-val">{{ lead.name }}</div>
+                <div class="box-sub"><i class="ph-bold ph-map-pin"></i> {{ lead.address or 'Brasil' }}</div>
+            </div>
+            <div>
+                <div class="box-label">Contato Direto</div>
+                <div class="box-val">{{ lead.phone or 'WhatsApp Cadastrado' }}</div>
+                <div class="box-sub">Reputação: {{ "%.1f"|format(lead.rating) }} ★ ({{ lead.reviews_count }} avaliações)</div>
+            </div>
+        </div>
+
+        <!-- Section 1: Diagnóstico -->
+        <div class="section-title">
+            <i class="ph-bold ph-magnifying-glass"></i> 1. Diagnóstico da Presença Digital
+        </div>
+        <div class="diagnosis-card">
+            <strong>Oportunidade de Mercado Identificada:</strong><br>
+            A empresa possui sólida reputação no Google Maps, porém atualmente {{ lead.qualification_detail or 'não possui Landing Page estruturada para smartphones ou necessita de modernização técnica' }}. Isso gera perda direta de clientes com alta intenção de compra que pesquisam na região e preferem contato rápido via WhatsApp.
+        </div>
+
+        <!-- Section 2: Escopo da Solução -->
+        <div class="section-title">
+            <i class="ph-bold ph-sparkle"></i> 2. Escopo do Projeto: Landing Page de Alta Conversão
+        </div>
+        <div class="deliverables-grid">
+            <div class="deliverable-item">
+                <i class="ph-bold ph-check-circle deliverable-icon"></i>
+                <div>
+                    <strong>Design 100% Mobile</strong><br>
+                    Layout focado em smartphones para quem busca no Google Maps.
+                </div>
+            </div>
+            <div class="deliverable-item">
+                <i class="ph-bold ph-check-circle deliverable-icon"></i>
+                <div>
+                    <strong>Botão WhatsApp 1-Clique</strong><br>
+                    Chamada direta para conversa sem fricção ou formulários longos.
+                </div>
+            </div>
+            <div class="deliverable-item">
+                <i class="ph-bold ph-check-circle deliverable-icon"></i>
+                <div>
+                    <strong>Certificado SSL Incluso</strong><br>
+                    Navegação segura (HTTPS), transmitindo confiança imediata.
+                </div>
+            </div>
+            <div class="deliverable-item">
+                <i class="ph-bold ph-check-circle deliverable-icon"></i>
+                <div>
+                    <strong>Carregamento Ultra-Rápido</strong><br>
+                    Abertura em menos de 2 segundos para evitar abandono de clientes.
+                </div>
+            </div>
+            <div class="deliverable-item">
+                <i class="ph-bold ph-check-circle deliverable-icon"></i>
+                <div>
+                    <strong>SEO Local & Google Maps</strong><br>
+                    Otimização para aparecer nas buscas de alta intenção na cidade.
+                </div>
+            </div>
+            <div class="deliverable-item">
+                <i class="ph-bold ph-check-circle deliverable-icon"></i>
+                <div>
+                    <strong>Entrega Ágil em até 5 Dias</strong><br>
+                    Cronograma acelerado de produção, revisão e publicação.
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Investimento Comercial -->
+        <div class="section-title">
+            <i class="ph-bold ph-tag"></i> 3. Condição Comercial Exclusiva
+        </div>
+        <div class="price-card">
+            <div>
+                <div class="price-label">Investimento Total Único</div>
+                <div class="price-val">R$ 1.000,00</div>
+                <div class="price-desc">Sem taxas de mensalidades ocultas ou contratos de fidelidade.</div>
+            </div>
+            <div class="payment-terms">
+                <span class="payment-badge">Condição Facilitada</span><br>
+                <strong>50% de entrada:</strong> R$ 500,00 no início<br>
+                <strong>50% na aprovação:</strong> R$ 500,00 na entrega final<br>
+                <small>Pagamento via Chave PIX ou Transferência Bancária</small>
+            </div>
+        </div>
+
+        <!-- Footer / Aceite -->
+        <div class="footer">
+            <div>
+                <strong>MARQ LAB</strong> • Soluções em Captação & Vendas B2B<br>
+                Validade desta proposta: 7 dias corridos.
+            </div>
+            <div style="text-align: right;">
+                Atendimento: {{ lead.assigned_to or 'Jamilly' }}<br>
+                <span style="font-family: monospace;">status: pronto para início</span>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
