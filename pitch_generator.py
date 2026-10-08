@@ -7,6 +7,7 @@ plus computes a comprehensive digital maturity score (0-100).
 import re
 import math
 import urllib.parse
+import urllib.request
 from typing import Dict, Any, Tuple, Optional
 
 # Coordenadas da base do usuário: R. Lótus, 450 - Campina da Barra, Araucária - PR, 83709-500
@@ -180,6 +181,83 @@ def clean_phone_number(raw_phone: str) -> str:
     return digits
 
 
+def resolve_google_ad_url(url: str) -> str:
+    """Extracts or follows Google /aclk or redirect links to obtain the real company website URL."""
+    if not url:
+        return ""
+    url = str(url).strip()
+    if "/aclk" in url or "google.com/url" in url or "adurl=" in url:
+        # 1. Direct query parameter extraction (zero network latency)
+        m = re.search(r"[?&](?:adurl|q)=([^&]+)", url)
+        if m:
+            extracted = urllib.parse.unquote(m.group(1)).strip()
+            if extracted.startswith("http://") or extracted.startswith("https://"):
+                return extracted
+            elif extracted.startswith("www."):
+                return f"https://{extracted}"
+
+        # 2. Handle root relative paths
+        if url.startswith("/"):
+            url = f"https://www.google.com{url}"
+
+        # 3. Follow HTTP 302 redirect if necessary
+        try:
+            class NoRedirect(urllib.request.HTTPRedirectHandler):
+                def redirect_request(self, req, fp, code, msg, headers, newurl):
+                    self.target_url = newurl
+                    return None
+            handler = NoRedirect()
+            opener = urllib.request.build_opener(handler)
+            opener.addheaders = [("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")]
+            try:
+                opener.open(url, timeout=4)
+            except Exception:
+                if hasattr(handler, "target_url") and handler.target_url:
+                    return handler.target_url
+        except Exception:
+            pass
+    return url
+
+
+def clean_site_display(url: str) -> str:
+    """Returns a short, clean domain name without query tracking parameters for scripts and PDF."""
+    if not url:
+        return ""
+    url = str(url).strip()
+    if "wa.me" in url or "whatsapp.com" in url:
+        return "link do WhatsApp"
+
+    # Extract target url if it's a tracking redirect
+    m = re.search(r"[?&](?:adurl|q)=([^&]+)", url)
+    if m:
+        extracted = urllib.parse.unquote(m.group(1)).strip()
+        if extracted:
+            url = extracted
+
+    # Remove protocol (http/https) and leading www.
+    u = re.sub(r"^https?://", "", url, flags=re.I)
+    u = re.sub(r"^www\.", "", u, flags=re.I)
+
+    # Remove query string (?...) and anchor (#...)
+    u = re.sub(r"[?#].*$", "", u)
+    u = u.rstrip("/")
+
+    if u.startswith("google.com/aclk") or "/aclk" in u:
+        return "site no Google"
+
+    # If long path, isolate base domain
+    if "/" in u:
+        domain = u.split("/")[0]
+        if len(domain) > 3:
+            u = domain
+
+    # Strict length boundary for clean print
+    if len(u) > 32:
+        u = u[:29] + "..."
+    return u or "site"
+
+
+
 def generate_scripts(lead_data: Dict[str, Any], niche: str = "sua área", city: str = "") -> Dict[str, str]:
     """
     Generates high-conversion Cold Call and 3-Step WhatsApp outreach scripts
@@ -192,6 +270,7 @@ def generate_scripts(lead_data: Dict[str, Any], niche: str = "sua área", city: 
     clean_phone = clean_phone_number(phone)
     phone_type = detect_phone_type(phone)
     website = lead_data.get("website", "")
+    display_site = clean_site_display(website)
     qual_status = lead_data.get("qualification_status", "")
     qual_detail = lead_data.get("qualification_detail", "")
 
@@ -216,13 +295,14 @@ def generate_scripts(lead_data: Dict[str, Any], niche: str = "sua área", city: 
             "Muitos clientes em potencial acabam desistindo por não acharem uma página rápida com WhatsApp direto."
         )
     else:
+        site_mention = f"o site atual de vocês ({display_site})" if display_site else "o site cadastrado de vocês"
         pain_hook = (
-            f"ao analisar a presença digital de vocês, vi que o site atual ({website}) está apresentando "
+            f"ao analisar a presença digital de vocês, vi que {site_mention} está apresentando "
             f"algumas limitações ({qual_detail or 'falta de adaptação para celular ou instabilidade'}). "
             "No smartphone, isso faz o visitante esperar ou desistir do contato."
         )
         wp_pain = (
-            f"Fui consultar o site de vocês ({website}) e notei que ele não está responsivo para celulares "
+            f"Fui consultar {site_mention} e notei que ele não está responsivo para celulares "
             f"ou está com carregamento lento, o que acaba perdendo oportunidades que chegam pelo Google Maps."
         )
 

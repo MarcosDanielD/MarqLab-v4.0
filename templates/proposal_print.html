@@ -16,6 +16,8 @@
             font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
 
         body {
@@ -272,6 +274,9 @@
             margin-top: 2px;
             line-height: 1.4;
             display: block;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            max-width: 100%;
         }
 
         /* Objections Matrix */
@@ -414,6 +419,9 @@
             font-size: 10px;
             line-height: 1.4;
             word-break: break-word;
+            overflow-wrap: anywhere;
+            white-space: pre-line;
+            max-width: 100%;
         }
 
         /* Agreement / Acceptance Box */
@@ -473,9 +481,13 @@
                 margin: 0 !important;
                 padding: 4mm 6mm !important;
                 width: 100% !important;
-                min-height: 280mm !important;
+                max-width: 100% !important;
+                min-height: 270mm !important;
+                max-height: 280mm !important;
+                box-sizing: border-box !important;
                 page-break-after: always !important;
                 break-after: page !important;
+                overflow: hidden !important;
             }
 
             .a4-page:last-child {
@@ -486,6 +498,15 @@
             .intel-card, .script-container, .objections-row, .deliverables-container, .pricing-box, .cadence-card, .agreement-box {
                 break-inside: avoid !important;
                 page-break-inside: avoid !important;
+            }
+
+            * {
+                overflow-wrap: anywhere !important;
+                word-break: break-word !important;
+            }
+
+            a, span {
+                word-break: break-word !important;
             }
         }
     </style>
@@ -556,7 +577,7 @@
                     </div>
                     <div class="box-sub">
                         <strong>Contato:</strong> {{ lead.phone or 'Telefone no Maps' }} ({{ scripts.phone_type | title }})<br>
-                        <strong>Website:</strong> {{ lead.website or 'Sem website cadastrado' }}
+                        <strong>Website:</strong> <span style="word-break: break-all; overflow-wrap: anywhere;">{{ clean_website or 'Sem website cadastrado' }}</span>
                     </div>
                 </div>
             </div>
@@ -589,7 +610,7 @@
                         {% if 'Sem Site' in lead.qualification_status %}
                         "Porém, notei que quem pesquisa pela {{ lead.name }} no celular ainda não encontra um site ou Landing Page com WhatsApp direto. Hoje, a maioria prefere clicar antes de ligar e vocês acabam perdendo clientes para os concorrentes."
                         {% else %}
-                        "Porém, ao analisar o site atual de vocês ({{ lead.website }}), vi que ele não está 100% adaptado para celulares ou carrega com lentidão, o que faz os visitantes desistirem do contato no WhatsApp."
+                        "Porém, ao analisar o site atual de vocês ({{ clean_website }}), vi que ele não está 100% adaptado para celulares ou carrega com lentidão, o que faz os visitantes desistirem do contato no WhatsApp."
                         {% endif %}
                     </span>
                 </div>

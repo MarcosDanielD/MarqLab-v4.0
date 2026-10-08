@@ -1009,11 +1009,16 @@ function renderLeadsTable(leads) {
                         <div class="flex items-center gap-1.5 flex-wrap">
                             ${qualBadge}
                             ${lead.website ? `
-                                <button onclick="openScreenshotModal(${lead.id}, '${escapeHtml(lead.name)}', '${escapeHtml(lead.website)}', '${escapeHtml(lead.qualification_detail || '')}')" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 hover:bg-purple-600 hover:text-white transition shadow-sm" title="Ver print do site capturado">
+                                <button onclick="openScreenshotModal(${lead.id})" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 hover:bg-purple-600 hover:text-white transition shadow-sm cursor-pointer" title="Ver print do site capturado">
                                     <i class="ph-bold ph-camera"></i>
                                     <span>📸 Ver Print</span>
                                 </button>
-                            ` : ''}
+                            ` : `
+                                <button onclick="openScreenshotModal(${lead.id})" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-600 hover:text-white transition shadow-sm cursor-pointer" title="Ver diagnóstico visual de ausência de site">
+                                    <i class="ph-bold ph-camera-slash"></i>
+                                    <span>📸 Sem Site</span>
+                                </button>
+                            `}
                         </div>
                         <div class="text-[10px] text-slate-400 break-words leading-tight" title="${escapeHtml(lead.qualification_detail || '')}">
                             ${escapeHtml(lead.qualification_detail || 'Sem site')}
@@ -1577,7 +1582,7 @@ async function executeClearLeads() {
 // ----------------------------------------------------
 // 16. WEBSITE SCREENSHOT VIEWER (PLAYWRIGHT PROOF)
 // ----------------------------------------------------
-async function openScreenshotModal(leadId, leadName, websiteUrl, auditDetail, refresh = false) {
+async function openScreenshotModal(leadId, refresh = false) {
     const modal = document.getElementById('screenshotModal');
     const titleEl = document.getElementById('screenshotModalTitle');
     const urlEl = document.getElementById('screenshotModalUrl');
@@ -1585,13 +1590,25 @@ async function openScreenshotModal(leadId, leadName, websiteUrl, auditDetail, re
     const directLink = document.getElementById('screenshotDirectLink');
     const auditNotes = document.getElementById('screenshotAuditNotes');
 
+    const lead = appState.currentLeads.find(l => l.id == leadId);
+    const leadName = lead ? lead.name : 'Empresa';
+    const websiteUrl = lead ? (lead.website || '') : '';
+    const auditDetail = lead ? (lead.qualification_detail || '') : '';
+
     if (titleEl) titleEl.innerText = `Print: ${leadName}`;
-    if (urlEl) urlEl.innerText = websiteUrl;
-    if (directLink) directLink.href = websiteUrl.startsWith('http') ? websiteUrl : `http://${websiteUrl}`;
+    if (urlEl) urlEl.innerText = websiteUrl || 'Sem website cadastrado no Google Maps';
+    if (directLink) {
+        if (websiteUrl) {
+            directLink.href = websiteUrl.startsWith('http') ? websiteUrl : `http://${websiteUrl}`;
+            directLink.classList.remove('hidden');
+        } else {
+            directLink.classList.add('hidden');
+        }
+    }
     if (auditNotes) {
         auditNotes.innerHTML = `
             <i class="ph-bold ph-warning-circle text-amber-500 text-sm"></i>
-            <span><strong>Diagnóstico:</strong> ${escapeHtml(auditDetail || 'Necessita modernização de design e botão de WhatsApp.')}</span>
+            <span><strong>Diagnóstico:</strong> ${escapeHtml(auditDetail || (websiteUrl ? 'Necessita modernização de design e botão de WhatsApp.' : 'Empresa sem website cadastrado - Alvo de alta prioridade.'))}</span>
         `;
     }
 
@@ -1600,7 +1617,7 @@ async function openScreenshotModal(leadId, leadName, websiteUrl, auditDetail, re
             <div class="py-16 text-center text-slate-400 space-y-3">
                 <div class="inline-block w-8 h-8 border-3 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
                 <p class="text-xs font-semibold text-slate-200">Capturando snapshot em alta resolução...</p>
-                <p class="text-[10px] text-slate-400">Playwright Chromium renderizando a página em tempo real.</p>
+                <p class="text-[10px] text-slate-400">Playwright Chromium renderizando a visualização em tempo real.</p>
             </div>
         `;
     }
@@ -1611,6 +1628,11 @@ async function openScreenshotModal(leadId, leadName, websiteUrl, auditDetail, re
         const urlToFetch = refresh ? `/api/lead/${leadId}/screenshot?refresh=1` : `/api/lead/${leadId}/screenshot`;
         const res = await fetch(urlToFetch);
         const data = await res.json();
+
+        // Update header details from API response if available
+        if (data.lead_name && titleEl) titleEl.innerText = `Print: ${data.lead_name}`;
+        if (data.website && urlEl) urlEl.innerText = data.website;
+
         if (data.success && data.screenshot_url) {
             const timeLabel = data.cached_at || 'agora';
             container.innerHTML = `
@@ -1622,7 +1644,7 @@ async function openScreenshotModal(leadId, leadName, websiteUrl, auditDetail, re
                             <i class="ph-bold ph-check"></i>
                             <span>Capturado em ${escapeHtml(timeLabel)}</span>
                         </span>
-                        <button onclick="openScreenshotModal(${leadId}, '${escapeHtml(leadName)}', '${escapeHtml(websiteUrl)}', '${escapeHtml(auditDetail || '')}', true)" class="text-[10px] text-brand-400 hover:text-brand-300 underline flex items-center gap-1">
+                        <button onclick="openScreenshotModal(${leadId}, true)" class="text-[10px] text-brand-400 hover:text-brand-300 underline flex items-center gap-1 cursor-pointer">
                             <i class="ph-bold ph-arrows-clockwise"></i> Recarregar Print
                         </button>
                     </div>
@@ -1633,8 +1655,8 @@ async function openScreenshotModal(leadId, leadName, websiteUrl, auditDetail, re
                 <div class="py-12 text-center text-rose-400 space-y-2">
                     <i class="ph-bold ph-warning-octagon text-3xl"></i>
                     <p class="text-xs font-bold">${escapeHtml(data.error || 'Não foi possível capturar o print deste site.')}</p>
-                    <p class="text-[11px] text-slate-400">O servidor do cliente pode estar offline, bloqueando automações ou sem certificado SSL.</p>
-                    <button onclick="openScreenshotModal(${leadId}, '${escapeHtml(leadName)}', '${escapeHtml(websiteUrl)}', '${escapeHtml(auditDetail || '')}', true)" class="mt-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white">
+                    <p class="text-[11px] text-slate-400">O servidor do cliente pode estar bloqueando automações ou sem certificado SSL.</p>
+                    <button onclick="openScreenshotModal(${leadId}, true)" class="mt-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white cursor-pointer">
                         Tentar Novamente
                     </button>
                 </div>
@@ -1646,7 +1668,7 @@ async function openScreenshotModal(leadId, leadName, websiteUrl, auditDetail, re
                 <i class="ph-bold ph-x-circle text-3xl"></i>
                 <p class="text-xs font-bold">Falha de conexão com o servidor.</p>
                 <p class="text-[11px] text-slate-400">${escapeHtml(err.message)}</p>
-                <button onclick="openScreenshotModal(${leadId}, '${escapeHtml(leadName)}', '${escapeHtml(websiteUrl)}', '${escapeHtml(auditDetail || '')}', true)" class="mt-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white">
+                <button onclick="openScreenshotModal(${leadId}, true)" class="mt-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white cursor-pointer">
                     Tentar Novamente
                 </button>
             </div>

@@ -241,6 +241,10 @@ def run_scraping_worker(niche: str, city: str, target_count: int, campaign_id: i
                         except Exception as e_click:
                             pass
 
+                    # Resolve any Google tracking / ad URLs to real destination domain
+                    if website:
+                        website = pitch_generator.resolve_google_ad_url(website)
+
                     # Address extraction
                     address = f"{city} - Brasil"
                     addr_elem = card.query_selector('.W4Efsd:last-child')

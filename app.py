@@ -334,10 +334,16 @@ def proposal_print_view(lead_id):
     if not lead:
         return "Lead não encontrado", 404
 
-    scripts = pitch_generator.generate_scripts(lead, niche="sua área", city=lead.get("address", ""))
+    lead_dict = dict(lead)
+    raw_website = lead_dict.get("website") or ""
+    clean_website = pitch_generator.clean_site_display(raw_website)
+    lead_dict["clean_website"] = clean_website
+
+    scripts = pitch_generator.generate_scripts(lead_dict, niche="sua área", city=lead.get("address", ""))
     return render_template(
         "proposal_print.html",
-        lead=lead,
+        lead=lead_dict,
+        clean_website=clean_website,
         scripts=scripts,
         now_date=datetime.now().strftime("%d/%m/%Y"),
         user_base_address=pitch_generator.USER_BASE_ADDRESS
@@ -345,27 +351,7 @@ def proposal_print_view(lead_id):
 
 
 def resolve_google_ad_url(url: str) -> str:
-    """Follows Google /aclk or redirect link to obtain the real company website URL."""
-    if "/aclk" in url or "google.com/url" in url:
-        if url.startswith("/"):
-            url = f"https://www.google.com{url}"
-        try:
-            import urllib.request
-            class NoRedirect(urllib.request.HTTPRedirectHandler):
-                def redirect_request(self, req, fp, code, msg, headers, newurl):
-                    self.target_url = newurl
-                    return None
-            handler = NoRedirect()
-            opener = urllib.request.build_opener(handler)
-            opener.addheaders = [("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")]
-            try:
-                opener.open(url, timeout=5)
-            except Exception:
-                if hasattr(handler, "target_url") and handler.target_url:
-                    return handler.target_url
-        except Exception:
-            pass
-    return url
+    return pitch_generator.resolve_google_ad_url(url)
 
 
 @app.route("/api/lead/<int:lead_id>/screenshot", methods=["GET"])
@@ -374,17 +360,8 @@ def lead_screenshot_api(lead_id):
     if not lead:
         return jsonify({"success": False, "error": "Lead não encontrado."}), 404
 
+    lead_name_escaped = lead.get("name", "Empresa")
     raw_website = (lead.get("website") or "").strip()
-    if not raw_website:
-        return jsonify({"success": False, "error": "Este lead não possui website cadastrado no Google Maps."}), 400
-
-    # 1. Resolve redirect or ad click URLs
-    website = resolve_google_ad_url(raw_website)
-    if website != raw_website:
-        database.update_lead_website(lead_id, website)
-
-    if not website.startswith("http://") and not website.startswith("https://"):
-        website = f"http://{website}"
 
     screenshots_dir = os.path.join(app.static_folder, "screenshots")
     os.makedirs(screenshots_dir, exist_ok=True)
@@ -398,11 +375,88 @@ def lead_screenshot_api(lead_id):
             "success": True,
             "lead_id": lead_id,
             "lead_name": lead.get("name"),
-            "website": website,
+            "website": raw_website or "Sem website cadastrado",
             "screenshot_url": rel_url,
             "cached": True,
             "cached_at": datetime.fromtimestamp(os.path.getmtime(filepath)).strftime("%d/%m/%Y %H:%M")
         })
+
+    # Case 1: Lead has NO website registered in Google Maps (generate high-impact diagnostic proof card)
+    if not raw_website:
+        try:
+            from playwright.sync_api import sync_playwright
+            with sync_playwright() as p:
+                launch_args = {
+                    "headless": True,
+                    "args": ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+                }
+                try:
+                    browser = p.chromium.launch(channel="chrome", **launch_args)
+                except Exception:
+                    try:
+                        browser = p.chromium.launch(channel="msedge", **launch_args)
+                    except Exception:
+                        browser = p.chromium.launch(**launch_args)
+
+                page = browser.new_page(viewport={"width": 1280, "height": 800})
+                page.set_content(f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <style>
+                        body {{ margin: 0; background: #0f172a; font-family: 'Segoe UI', system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; color: white; }}
+                        .card {{ background: #1e293b; border: 2px solid #f59e0b; border-radius: 20px; padding: 45px 55px; max-width: 680px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }}
+                        .icon {{ font-size: 54px; margin-bottom: 15px; }}
+                        h2 {{ margin: 0 0 10px 0; color: #fbbf24; font-size: 24px; }}
+                        .lead-name {{ font-size: 18px; font-weight: 700; color: #f8fafc; margin-bottom: 15px; }}
+                        .url-box {{ background: rgba(0,0,0,0.3); border: 1px solid #334155; padding: 10px 16px; border-radius: 10px; font-family: monospace; font-size: 13px; color: #fcd34d; margin-bottom: 22px; }}
+                        p {{ font-size: 13.5px; color: #94a3b8; line-height: 1.6; margin: 0 0 15px 0; }}
+                        .highlight {{ background: rgba(245, 158, 11, 0.1); border-left: 4px solid #f59e0b; padding: 12px 18px; text-align: left; border-radius: 0 10px 10px 0; font-size: 12.5px; color: #e2e8f0; }}
+                    </style>
+                </head>
+                <body>
+                    <div class="card">
+                        <div class="icon">🚫</div>
+                        <h2>Sem Website Cadastrado no Google Maps</h2>
+                        <div class="lead-name">{lead_name_escaped}</div>
+                        <div class="url-box">Nenhum site oficial vinculado no perfil da empresa</div>
+                        <p>Esta empresa não cadastrou nenhum site ou Landing Page no Google Maps. Todos os clientes que pesquisam por ela no celular não encontram onde clicar para falar no WhatsApp.</p>
+                        <div class="highlight">
+                            <strong>🎯 Argumento Comercial de Venda (R$ 1.000,00):</strong><br>
+                            "Olá! Notei que quem pesquisa pela {lead_name_escaped} no Google não encontra um site com botão de WhatsApp direto. Vocês estão perdendo clientes para os concorrentes que já possuem página. Criamos em até 5 dias por taxa única de R$ 1.000,00!"
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """)
+                time.sleep(0.3)
+                page.screenshot(path=filepath, full_page=False)
+                browser.close()
+
+            return jsonify({
+                "success": True,
+                "lead_id": lead_id,
+                "lead_name": lead.get("name"),
+                "website": "Sem site cadastrado",
+                "screenshot_url": rel_url,
+                "cached": False,
+                "cached_at": datetime.now().strftime("%d/%m/%Y %H:%M")
+            })
+        except Exception as e:
+            return jsonify({
+                "success": False,
+                "error": f"Erro ao gerar diagnóstico: {str(e)}",
+                "website": "Sem site cadastrado"
+            })
+
+    # Case 2: Website registered -> Resolve Google tracking/redirects
+    website = pitch_generator.resolve_google_ad_url(raw_website)
+    if website != raw_website:
+        database.update_lead_website(lead_id, website)
+
+    if not website.startswith("http://") and not website.startswith("https://"):
+        website = f"http://{website}"
 
     is_wa = "wa.me" in website.lower() or "whatsapp.com" in website.lower()
 
@@ -430,7 +484,6 @@ def lead_screenshot_api(lead_id):
 
             if is_wa:
                 # Specialized Diagnostic Card for WhatsApp-only businesses
-                lead_name_escaped = lead.get("name", "Empresa")
                 page.set_content(f"""
                 <!DOCTYPE html>
                 <html>
@@ -462,28 +515,21 @@ def lead_screenshot_api(lead_id):
                 </body>
                 </html>
                 """)
-                time.sleep(0.5)
+                time.sleep(0.3)
                 page.screenshot(path=filepath, full_page=False)
             else:
                 load_success = False
-                error_msg = ""
                 try:
-                    page.goto(website, timeout=12000, wait_until="domcontentloaded")
-                    load_success = True
-                except Exception as e_load:
-                    error_msg = str(e_load)
-                    try:
-                        page.goto(website, timeout=6000, wait_until="commit")
-                        load_success = True
-                    except Exception:
-                        pass
-
-                if load_success:
+                    # Snappy 7-second commit timeout: captures as soon as headers/HTML commit
+                    page.goto(website, timeout=7000, wait_until="commit")
                     time.sleep(1.2)
                     page.screenshot(path=filepath, full_page=False)
-                else:
+                    load_success = True
+                except Exception:
+                    load_success = False
+
+                if not load_success:
                     # Render visual Diagnostic Error Card for unreachable/offline sites
-                    lead_name_escaped = lead.get("name", "Empresa")
                     page.set_content(f"""
                     <!DOCTYPE html>
                     <html>
@@ -506,7 +552,7 @@ def lead_screenshot_api(lead_id):
                             <h2>Site Oficial Inacessível / Fora do Ar</h2>
                             <div class="lead-name">{lead_name_escaped}</div>
                             <div class="url-box">{website}</div>
-                            <p>O servidor desta empresa não está respondendo, está fora do ar ou com falha de conexão (DNS / SSL).</p>
+                            <p>O servidor desta empresa não está respondendo, está fora do ar ou com falha técnica de conexão (DNS / SSL).</p>
                             <div class="highlight">
                                 <strong>🎯 Argumento Comercial de Fechamento:</strong><br>
                                 "Olá! Liguei porque tentei acessar o site oficial de vocês pelo Google Maps e ele está dando erro de conexão. Vocês sabiam disso? Clientes que pesquisam no Google estão caindo em uma página fora do ar!"
@@ -515,7 +561,7 @@ def lead_screenshot_api(lead_id):
                     </body>
                     </html>
                     """)
-                    time.sleep(0.5)
+                    time.sleep(0.3)
                     page.screenshot(path=filepath, full_page=False)
 
             browser.close()
