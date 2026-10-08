@@ -57,108 +57,107 @@
     <!-- ============================================================ -->
     <!-- LEFT SIDEBAR (Menu Lateral Esquerdo Fixo / Recolhível) -->
     <!-- ============================================================ -->
-    <aside id="sidebarLeft" class="sidebar-left fixed top-0 left-0 bottom-0 w-72 bg-white dark:bg-darkcard border-r border-slate-200 dark:border-darkborder z-50 flex flex-col justify-between p-5 shadow-xl lg:shadow-none">
+    <aside id="sidebarLeft" class="sidebar-left fixed top-0 left-0 bottom-0 w-60 bg-white dark:bg-darkcard border-r border-slate-200/80 dark:border-darkborder/70 z-50 flex flex-col justify-between p-3.5 shadow-xl lg:shadow-none select-none">
         
         <!-- Top Section: Brand + Active Operator + Nav Links -->
-        <div class="space-y-6">
+        <div class="space-y-4">
             <!-- Brand Logo -->
-            <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-darkborder/70">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center shadow-md shadow-brand-500/25">
-                        <span class="font-extrabold text-white text-sm font-sans">M</span>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-darkborder/60">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center shadow-sm">
+                        <span class="font-extrabold text-white text-xs font-sans">M</span>
                     </div>
                     <div>
-                        <span class="font-bold text-lg tracking-tight text-slate-900 dark:text-white font-brand">
+                        <span class="font-bold text-sm tracking-tight text-slate-900 dark:text-white font-brand">
                             Marq Lab
                         </span>
-                        <span class="block text-[10px] font-semibold text-slate-400 -mt-1 tracking-wider uppercase">Prospecção B2B</span>
+                        <span class="block text-[9px] font-semibold text-slate-400 -mt-0.5 tracking-wider uppercase">SDR Engine</span>
                     </div>
                 </div>
 
-                <!-- Close Mobile Button -->
-                <button onclick="toggleSidebarCollapse()" class="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white">
-                    <i class="ph-bold ph-x text-lg"></i>
+                <!-- Toggle / Close Button -->
+                <button onclick="toggleSidebarCollapse()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition" title="Recolher Menu">
+                    <i class="ph-bold ph-caret-left text-base"></i>
                 </button>
             </div>
 
-            <!-- Active Operator Card (SDR / Vendedor da Sessão) -->
-            <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-darkcard2 border border-slate-200/80 dark:border-darkborder/80 space-y-2">
+            <!-- Active Operator Card (SDR / Vendedor da Sessão) - Compact & Clean -->
+            <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-darkcard2/80 border border-slate-200/60 dark:border-darkborder/60 space-y-1.5">
                 <div class="flex items-center justify-between">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Operador Ativo</span>
+                    <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400">Operador Ativo</span>
                     <button onclick="openTeamModal()" class="text-[10px] font-semibold text-brand-500 hover:text-brand-600 flex items-center gap-0.5" title="Gerenciar Equipe">
                         <i class="ph-bold ph-gear"></i> Equipe
                     </button>
                 </div>
                 
-                <div class="flex items-center gap-2.5">
-                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-pink-500 to-rose-500 text-white flex items-center justify-center font-bold text-sm shadow-sm" id="sidebarOperatorAvatar">
+                <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-lg bg-gradient-to-tr from-pink-500 to-rose-500 text-white flex items-center justify-center font-bold text-xs shadow-sm shrink-0" id="sidebarOperatorAvatar">
                         J
                     </div>
                     <div class="flex-1 min-w-0">
                         <select id="selectActiveOperator" onchange="changeActiveOperator(this.value)" class="w-full bg-transparent font-bold text-xs text-slate-900 dark:text-white focus:outline-none cursor-pointer truncate">
-                            <option value="Jamilly" selected>Jamilly (Linda namorada)</option>
+                            <option value="Jamilly" selected>Jamilly (SDR)</option>
                             <option value="Marcos">Marcos (Gestor)</option>
                         </select>
-                        <span class="block text-[10px] text-slate-400 font-medium truncate" id="sidebarOperatorRole">SDR / Closer de Vendas</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Navigation Items -->
-            <nav class="space-y-1.5">
+            <!-- Navigation Items - Compact, Clean, Refined -->
+            <nav class="space-y-1">
                 <button onclick="switchView('mineracao')" id="sideNavMineracao" class="sidebar-nav-item active">
-                    <i class="ph-bold ph-radar text-lg text-brand-500"></i>
-                    <span>Mineração Google Maps</span>
+                    <i class="ph-bold ph-radar text-brand-500"></i>
+                    <span>Mineração Maps</span>
                 </button>
 
                 <button onclick="switchView('prospeccao')" id="sideNavProspeccao" class="sidebar-nav-item">
-                    <i class="ph-bold ph-users-three text-lg text-indigo-500"></i>
+                    <i class="ph-bold ph-users-three text-indigo-500"></i>
                     <span>Central de Leads</span>
-                    <span id="sideLeadsCount" class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 dark:bg-darkborder text-slate-700 dark:text-slate-300">0</span>
+                    <span id="sideLeadsCount" class="ml-auto px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-slate-200 dark:bg-darkborder text-slate-700 dark:text-slate-300">0</span>
                 </button>
 
                 <button onclick="switchView('agenda')" id="sideNavAgenda" class="sidebar-nav-item">
-                    <i class="ph-bold ph-calendar-check text-lg text-purple-500"></i>
-                    <span>Agenda de Reuniões</span>
-                    <span id="sideAgendaCount" class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-600 dark:text-indigo-400">0</span>
+                    <i class="ph-bold ph-calendar-check text-purple-500"></i>
+                    <span>Agenda de Calls</span>
+                    <span id="sideAgendaCount" class="ml-auto px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-indigo-500/20 text-indigo-600 dark:text-indigo-400">0</span>
                 </button>
 
                 <button onclick="switchView('metricas')" id="sideNavMetricas" class="sidebar-nav-item">
-                    <i class="ph-bold ph-chart-line-up text-lg text-emerald-500"></i>
+                    <i class="ph-bold ph-chart-line-up text-emerald-500"></i>
                     <span>Métricas & Funil</span>
                 </button>
 
                 <button onclick="openTeamModal()" class="sidebar-nav-item">
-                    <i class="ph-bold ph-identification-card text-lg text-amber-500"></i>
+                    <i class="ph-bold ph-identification-card text-amber-500"></i>
                     <span>Equipe & SDRs</span>
                 </button>
             </nav>
         </div>
 
-        <!-- Bottom Section: Actions, Theme, Status -->
-        <div class="space-y-3 pt-4 border-t border-slate-100 dark:border-darkborder/70 text-xs">
-            <!-- Clear Leads Database -->
-            <button onclick="confirmClearLeads()" class="w-full py-2.5 px-3 rounded-xl border border-rose-500/25 bg-rose-500/5 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-2 transition" title="Zerar banco de dados para nova prospecção">
-                <i class="ph-bold ph-trash text-sm"></i>
-                <span>Limpar Base de Leads</span>
-            </button>
-
-            <!-- Export Full Excel -->
-            <a href="/api/export/excel" class="w-full py-2 px-3 rounded-xl border border-slate-200 dark:border-darkborder hover:border-emerald-500/40 text-slate-700 dark:text-slate-300 font-semibold flex items-center gap-2 transition">
-                <i class="ph-bold ph-file-xls text-emerald-500 text-sm"></i>
-                <span>Exportar Excel (.xlsx)</span>
-            </a>
+        <!-- Bottom Section: Actions, Theme, Status - Ultra Clean -->
+        <div class="space-y-2.5 pt-3 border-t border-slate-100 dark:border-darkborder/60 text-xs">
+            <!-- Compact Quick Actions -->
+            <div class="grid grid-cols-2 gap-1.5">
+                <a href="/api/export/excel" class="py-1.5 px-2 rounded-lg border border-slate-200/80 dark:border-darkborder hover:border-emerald-500/40 text-slate-700 dark:text-slate-300 font-semibold text-[11px] flex items-center justify-center gap-1.5 transition hover:bg-slate-50 dark:hover:bg-darkcard2" title="Exportar leads para Excel">
+                    <i class="ph-bold ph-file-xls text-emerald-500 text-sm"></i>
+                    <span>Excel</span>
+                </a>
+                <button onclick="confirmClearLeads()" class="py-1.5 px-2 rounded-lg border border-slate-200/80 dark:border-darkborder hover:border-rose-500/40 text-slate-500 dark:text-slate-400 hover:text-rose-500 font-semibold text-[11px] flex items-center justify-center gap-1.5 transition hover:bg-rose-500/5" title="Limpar base de dados para nova prospecção">
+                    <i class="ph-bold ph-trash text-sm"></i>
+                    <span>Limpar</span>
+                </button>
+            </div>
 
             <!-- Theme Toggle & Engine Status -->
-            <div class="pt-2 flex items-center justify-between">
-                <button id="themeToggleBtn" onclick="toggleTheme()" class="p-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard2 text-slate-600 dark:text-slate-300 hover:text-brand-500 transition shadow-sm" title="Alternar Modo Claro/Escuro">
-                    <i id="themeIcon" class="ph-bold ph-sun text-base"></i>
-                </button>
-
-                <div class="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <div class="flex items-center justify-between pt-1 px-1">
+                <div class="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                     <span id="engineStatusText">Motor Pronto</span>
                 </div>
+
+                <button id="themeToggleBtn" onclick="toggleTheme()" class="p-1 rounded-lg border border-slate-200/80 dark:border-darkborder bg-white dark:bg-darkcard2 text-slate-600 dark:text-slate-300 hover:text-brand-500 transition shadow-sm" title="Alternar Modo Claro/Escuro">
+                    <i id="themeIcon" class="ph-bold ph-sun text-sm"></i>
+                </button>
             </div>
         </div>
     </aside>
@@ -166,10 +165,10 @@
     <!-- ============================================================ -->
     <!-- MAIN CONTENT WRAPPER (Preenche todo o lado direito) -->
     <!-- ============================================================ -->
-    <div id="mainWrapper" class="main-wrapper lg:pl-72 flex flex-col min-h-screen">
+    <div id="mainWrapper" class="main-wrapper lg:pl-60 flex flex-col min-h-screen">
         
         <!-- Top App Header -->
-        <header class="sticky top-0 z-30 h-16 border-b border-slate-200/80 dark:border-darkborder backdrop-blur-xl bg-white/80 dark:bg-darkbg/85 flex items-center justify-between px-4 sm:px-6 lg:px-8 transition-colors">
+        <header class="sticky top-0 z-30 h-14 border-b border-slate-200/80 dark:border-darkborder backdrop-blur-xl bg-white/80 dark:bg-darkbg/85 flex items-center justify-between px-4 sm:px-6 transition-colors">
             <!-- Left: 3-Bars Hamburger Toggle + View Title -->
             <div class="flex items-center gap-3">
                 <button id="btnToggleSidebar" onclick="toggleSidebarCollapse()" class="p-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-200 hover:text-brand-500 hover:border-brand-500/40 transition shadow-sm" title="Recolher / Expandir Menu Lateral">
