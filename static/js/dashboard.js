@@ -966,7 +966,7 @@ function renderLeadsTable(leads) {
                     </div>
                 </td>
 
-                <!-- 2. Empresa & Local -->
+                <!-- 2. Empresa & Local + Distância da Casa -->
                 <td class="py-3 px-4 company-col-cell" style="${getCompanyColWidthStyle()}">
                     <div class="font-bold text-slate-900 dark:text-white leading-normal break-words text-[13px] whitespace-normal">
                         ${escapeHtml(lead.name)}
@@ -975,6 +975,12 @@ function renderLeadsTable(leads) {
                         <i class="ph ph-map-pin text-[12px] shrink-0 mt-0.5 text-slate-400"></i>
                         <span>${escapeHtml(lead.address || 'Brasil')}</span>
                     </div>
+                    ${lead.distance_km != null ? `
+                        <div class="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-brand-600 dark:text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded-md border border-brand-500/20" title="Distância estimada da sua residência (R. Lótus, 450 - Araucária/PR)">
+                            <i class="ph-bold ph-navigation-arrow text-[10px]"></i>
+                            <span>${lead.distance_km.toFixed(1)} km da sua casa</span>
+                        </div>
+                    ` : ''}
                 </td>
 
                 <!-- 3. Contato + Phone Type Badge -->
@@ -997,10 +1003,18 @@ function renderLeadsTable(leads) {
                     </div>
                 </td>
 
-                <!-- 5. Diagnóstico Web -->
+                <!-- 5. Diagnóstico Web & Print Proof -->
                 <td class="py-3 px-4 min-w-[180px] max-w-[260px]">
-                    <div class="space-y-0.5">
-                        <div>${qualBadge}</div>
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            ${qualBadge}
+                            ${lead.website ? `
+                                <button onclick="openScreenshotModal(${lead.id}, '${escapeHtml(lead.name)}', '${escapeHtml(lead.website)}', '${escapeHtml(lead.qualification_detail || '')}')" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 hover:bg-purple-600 hover:text-white transition shadow-sm" title="Ver print do site capturado">
+                                    <i class="ph-bold ph-camera"></i>
+                                    <span>📸 Ver Print</span>
+                                </button>
+                            ` : ''}
+                        </div>
                         <div class="text-[10px] text-slate-400 break-words leading-tight" title="${escapeHtml(lead.qualification_detail || '')}">
                             ${escapeHtml(lead.qualification_detail || 'Sem site')}
                         </div>
@@ -1558,6 +1572,78 @@ async function executeClearLeads() {
     } catch (err) {
         showToast('Erro de comunicação: ' + err.message, 'error');
     }
+}
+
+// ----------------------------------------------------
+// 16. WEBSITE SCREENSHOT VIEWER (PLAYWRIGHT PROOF)
+// ----------------------------------------------------
+async function openScreenshotModal(leadId, leadName, websiteUrl, auditDetail) {
+    const modal = document.getElementById('screenshotModal');
+    const titleEl = document.getElementById('screenshotModalTitle');
+    const urlEl = document.getElementById('screenshotModalUrl');
+    const container = document.getElementById('screenshotContainer');
+    const directLink = document.getElementById('screenshotDirectLink');
+    const auditNotes = document.getElementById('screenshotAuditNotes');
+
+    if (titleEl) titleEl.innerText = `Print: ${leadName}`;
+    if (urlEl) urlEl.innerText = websiteUrl;
+    if (directLink) directLink.href = websiteUrl.startsWith('http') ? websiteUrl : `http://${websiteUrl}`;
+    if (auditNotes) {
+        auditNotes.innerHTML = `
+            <i class="ph-bold ph-warning-circle text-amber-500 text-sm"></i>
+            <span><strong>Diagnóstico:</strong> ${escapeHtml(auditDetail || 'Necessita modernização de design e botão de WhatsApp.')}</span>
+        `;
+    }
+
+    if (container) {
+        container.innerHTML = `
+            <div class="py-16 text-center text-slate-400 space-y-3">
+                <div class="inline-block w-8 h-8 border-3 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-xs font-semibold text-slate-200">Capturando snapshot em alta resolução...</p>
+                <p class="text-[10px] text-slate-400">Playwright Chromium renderizando a página em tempo real.</p>
+            </div>
+        `;
+    }
+
+    if (modal) modal.classList.remove('hidden');
+
+    try {
+        const res = await fetch(`/api/lead/${leadId}/screenshot`);
+        const data = await res.json();
+        if (data.success && data.screenshot_url) {
+            container.innerHTML = `
+                <div class="w-full flex flex-col items-center gap-2">
+                    <img src="${data.screenshot_url}?t=${Date.now()}" alt="Screenshot de ${escapeHtml(leadName)}"
+                        class="w-full max-h-[65vh] object-contain object-top rounded-lg shadow-2xl border border-slate-700 bg-white">
+                    <div class="text-[10px] text-slate-400 flex items-center gap-2">
+                        <i class="ph-bold ph-check text-emerald-400"></i>
+                        <span>Capturado em ${new Date(data.cached_at).toLocaleString('pt-BR')} via Playwright Headless</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="py-12 text-center text-rose-400 space-y-2">
+                    <i class="ph-bold ph-warning-octagon text-3xl"></i>
+                    <p class="text-xs font-bold">${escapeHtml(data.error || 'Não foi possível capturar o print deste site.')}</p>
+                    <p class="text-[11px] text-slate-400">O servidor do cliente pode estar offline, bloqueando automações ou sem certificado SSL.</p>
+                </div>
+            `;
+        }
+    } catch (err) {
+        container.innerHTML = `
+            <div class="py-12 text-center text-rose-400 space-y-2">
+                <i class="ph-bold ph-x-circle text-3xl"></i>
+                <p class="text-xs font-bold">Falha de conexão com o servidor.</p>
+                <p class="text-[11px] text-slate-400">${escapeHtml(err.message)}</p>
+            </div>
+        `;
+    }
+}
+
+function closeScreenshotModal() {
+    const modal = document.getElementById('screenshotModal');
+    if (modal) modal.classList.add('hidden');
 }
 
 // ----------------------------------------------------

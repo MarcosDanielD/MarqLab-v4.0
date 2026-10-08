@@ -5,8 +5,69 @@ plus computes a comprehensive digital maturity score (0-100).
 """
 
 import re
+import math
 import urllib.parse
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Optional
+
+# Coordenadas da base do usuário: R. Lótus, 450 - Campina da Barra, Araucária - PR, 83709-500
+USER_BASE_LAT = -25.61742
+USER_BASE_LON = -49.36540
+USER_BASE_ADDRESS = "R. Lótus, 450 - Campina da Barra, Araucária - PR"
+
+
+def calculate_distance_km(lat: float, lon: float, base_lat: float = USER_BASE_LAT, base_lon: float = USER_BASE_LON) -> float:
+    """Calcula a distância em quilômetros via fórmula de Haversine."""
+    R = 6371.0  # Raio da Terra em km
+    dlat = math.radians(lat - base_lat)
+    dlon = math.radians(lon - base_lon)
+    a = math.sin(dlat / 2)**2 + math.cos(math.radians(base_lat)) * math.cos(math.radians(lat)) * math.sin(dlon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return round(R * c, 1)
+
+
+def extract_coords_from_url(maps_url: str) -> Tuple[Optional[float], Optional[float]]:
+    """Extrai latitude e longitude de URLs do Google Maps."""
+    if not maps_url:
+        return None, None
+    m1 = re.search(r"@(-?\d+\.\d+),(-?\d+\.\d+)", maps_url)
+    if m1:
+        try:
+            return float(m1.group(1)), float(m1.group(2))
+        except Exception:
+            pass
+    m2 = re.search(r"!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)", maps_url)
+    if m2:
+        try:
+            return float(m2.group(1)), float(m2.group(2))
+        except Exception:
+            pass
+    return None, None
+
+
+def estimate_distance_from_address(address: str, maps_url: str = "") -> float:
+    """Calcula ou estima a distância em km a partir das coordenadas do Maps ou do endereço."""
+    lat, lon = extract_coords_from_url(maps_url)
+    if lat is not None and lon is not None:
+        return calculate_distance_km(lat, lon)
+
+    # Estimativa de proximidade por cidade/bairro em relação a Campina da Barra, Araucária
+    addr_lower = (address or "").lower()
+    if "campina da barra" in addr_lower or "lótus" in addr_lower or "lotus" in addr_lower:
+        return 0.5
+    elif "araucária" in addr_lower or "araucaria" in addr_lower:
+        return 4.2
+    elif "fazenda rio grande" in addr_lower:
+        return 14.5
+    elif "campo largo" in addr_lower:
+        return 22.0
+    elif "curitiba" in addr_lower:
+        return 19.8
+    elif "são josé dos pinhais" in addr_lower or "sao jose" in addr_lower:
+        return 27.5
+    elif "pinhais" in addr_lower or "colombo" in addr_lower:
+        return 31.0
+    return 5.0
+
 
 
 def calculate_lead_score(

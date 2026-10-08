@@ -27,3 +27,8 @@ desktop.ini
 .vscode/
 *.swp
 *.swo
+
+# Runtime Screenshots cache
+static/screenshots/*.png
+!static/screenshots/.gitkeep
+

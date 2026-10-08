@@ -339,9 +339,98 @@ def proposal_print_view(lead_id):
         "proposal_print.html",
         lead=lead,
         scripts=scripts,
-        now_date=datetime.now().strftime("%d/%m/%Y")
+        now_date=datetime.now().strftime("%d/%m/%Y"),
+        user_base_address=pitch_generator.USER_BASE_ADDRESS
     )
 
+
+@app.route("/api/lead/<int:lead_id>/screenshot", methods=["GET"])
+def lead_screenshot_api(lead_id):
+    lead = database.get_lead_by_id(lead_id)
+    if not lead:
+        return jsonify({"success": False, "error": "Lead não encontrado."}), 404
+
+    website = (lead.get("website") or "").strip()
+    if not website:
+        return jsonify({"success": False, "error": "Este lead não possui website cadastrado no Google Maps."}), 400
+
+    # Extract real target URL if it's a Google ad link or relative link
+    if "adurl=" in website:
+        try:
+            import urllib.parse
+            parsed = urllib.parse.urlparse(website)
+            qs = urllib.parse.parse_qs(parsed.query)
+            adurl_list = qs.get("adurl", [])
+            if adurl_list and adurl_list[0].strip():
+                website = adurl_list[0].strip()
+        except Exception:
+            pass
+
+    if website.startswith("/"):
+        website = f"https://www.google.com{website}"
+
+    if not website.startswith("http://") and not website.startswith("https://"):
+        website = f"http://{website}"
+
+    screenshots_dir = os.path.join(app.static_folder, "screenshots")
+    os.makedirs(screenshots_dir, exist_ok=True)
+    filename = f"lead_{lead_id}.png"
+    filepath = os.path.join(screenshots_dir, filename)
+    rel_url = f"/static/screenshots/{filename}"
+
+    force_refresh = request.args.get("refresh", "0") == "1"
+    if os.path.exists(filepath) and not force_refresh and os.path.getsize(filepath) > 1000:
+        return jsonify({
+            "success": True,
+            "lead_id": lead_id,
+            "lead_name": lead.get("name"),
+            "website": website,
+            "screenshot_url": rel_url,
+            "cached": True,
+            "cached_at": datetime.fromtimestamp(os.path.getmtime(filepath)).strftime("%d/%m/%Y %H:%M")
+        })
+
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            launch_args = {
+                "headless": True,
+                "args": ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+            }
+            try:
+                browser = p.chromium.launch(channel="chrome", **launch_args)
+            except Exception:
+                try:
+                    browser = p.chromium.launch(channel="msedge", **launch_args)
+                except Exception:
+                    browser = p.chromium.launch(**launch_args)
+
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 800},
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                ignore_https_errors=True
+            )
+            page = context.new_page()
+            page.goto(website, timeout=14000, wait_until="domcontentloaded")
+            time.sleep(1.5)
+            page.screenshot(path=filepath, full_page=False)
+            browser.close()
+
+        return jsonify({
+            "success": True,
+            "lead_id": lead_id,
+            "lead_name": lead.get("name"),
+            "website": website,
+            "screenshot_url": rel_url,
+            "cached": False,
+            "cached_at": datetime.now().strftime("%d/%m/%Y %H:%M")
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"Não foi possível renderizar a página do cliente: {str(e)}",
+            "website": website
+        })
 
 
 @app.route("/api/logs", methods=["GET"])

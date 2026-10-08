@@ -404,12 +404,12 @@
                         </div>
                     </div>
 
-                    <!-- Enhanced Filters Bar with SDR and Phone Type -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 pt-1">
+                    <!-- Enhanced Filters Bar with SDR, Phone Type and Proximity Sorting -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5 pt-1">
                         <!-- 1. Search -->
-                        <div class="relative lg:col-span-2">
+                        <div class="relative">
                             <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" id="filterSearch" placeholder="Buscar empresa, telefone ou anotação..."
+                            <input type="text" id="filterSearch" placeholder="Buscar empresa, tel..."
                                 class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition">
                         </div>
 
@@ -451,8 +451,19 @@
                         <div class="relative">
                             <select id="filterPhoneType" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition cursor-pointer">
                                 <option value="all">Contato: Todos</option>
-                                <option value="whatsapp">📱 Celular / WhatsApp</option>
+                                <option value="whatsapp">📱 Celular / Whats</option>
                                 <option value="landline">☎ Linha Fixa</option>
+                            </select>
+                        </div>
+
+                        <!-- 6. Ordenação & Proximidade da Minha Casa -->
+                        <div class="relative">
+                            <select id="filterSort" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-xs font-semibold text-brand-600 dark:text-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition cursor-pointer">
+                                <option value="score_desc">⚡ Score (Padrão)</option>
+                                <option value="dist_asc">📍 Mais Próximos de Mim</option>
+                                <option value="dist_desc">📍 Mais Distantes</option>
+                                <option value="reviews_desc">★ Mais Avaliados</option>
+                                <option value="rating_desc">★ Maior Nota</option>
                             </select>
                         </div>
                     </div>
@@ -932,6 +943,47 @@
     </div>
 
     <!-- ============================================================ -->
+    <!-- MODAL 7: VISUALIZAÇÃO DO SITE ATUAL (PRINT PROOF) -->
+    <!-- ============================================================ -->
+    <div id="screenshotModal" class="fixed inset-0 z-50 hidden bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-modal max-w-4xl w-full max-h-[90vh] p-6 rounded-2xl shadow-2xl space-y-4 flex flex-col">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-darkborder pb-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
+                        <i class="ph-bold ph-camera text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-base text-slate-900 dark:text-white" id="screenshotModalTitle">Print do Site Atual</h4>
+                        <p class="text-xs text-slate-400 font-mono" id="screenshotModalUrl">https://...</p>
+                    </div>
+                </div>
+                <button onclick="closeScreenshotModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition">
+                    <i class="ph-bold ph-x text-lg"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-auto bg-slate-950 rounded-xl border border-slate-800 p-2 min-h-[360px] flex items-center justify-center relative" id="screenshotContainer">
+                <!-- Rendered dynamically by JS -->
+            </div>
+
+            <div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs border-t border-slate-200 dark:border-darkborder">
+                <div class="text-slate-400 flex items-center gap-2" id="screenshotAuditNotes">
+                    <i class="ph-bold ph-info text-brand-500"></i>
+                    <span>Auditoria visual do design atual para demonstrar necessidade de modernização na proposta de R$ 1.000.</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a id="screenshotDirectLink" href="#" target="_blank" class="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-200 hover:text-brand-500 transition flex items-center gap-1.5">
+                        <i class="ph-bold ph-arrow-square-out"></i> Abrir Site Real
+                    </a>
+                    <button onclick="closeScreenshotModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-darkcard text-slate-700 dark:text-slate-300">
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
     <!-- MODAL 6: CONFIRMAÇÃO DE LIMPEZA DA BASE -->
     <!-- ============================================================ -->
     <div id="clearConfirmModal" class="fixed inset-0 z-50 hidden bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
@@ -962,7 +1014,7 @@
         <span id="toastMessage">Operação realizada</span>
     </div>
 
-    <!-- Frontend Script (Cache buster v5.0) -->
-    <script src="/static/js/dashboard.js?v=5.0"></script>
+    <!-- Frontend Script (Cache buster v5.1) -->
+    <script src="/static/js/dashboard.js?v=5.1"></script>
 </body>
 </html>

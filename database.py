@@ -77,6 +77,8 @@ def init_db():
         cursor.execute("UPDATE leads SET assigned_to = 'Jamilly' WHERE assigned_to IS NULL")
     if "phone_type" not in existing_cols:
         cursor.execute("ALTER TABLE leads ADD COLUMN phone_type TEXT DEFAULT 'unknown'")
+    if "distance_km" not in existing_cols:
+        cursor.execute("ALTER TABLE leads ADD COLUMN distance_km REAL DEFAULT 5.0")
 
     # Table: Lead Notes / CRM Interaction History
     cursor.execute("""
@@ -133,6 +135,15 @@ def init_db():
         for r in rows_to_update:
             ptype = pitch_generator.detect_phone_type(r["phone"])
             cursor.execute("UPDATE leads SET phone_type = ? WHERE id = ?", (ptype, r["id"]))
+
+    # Update distances for existing leads if missing
+    cursor.execute("SELECT id, address, maps_url FROM leads WHERE distance_km IS NULL OR distance_km = 0")
+    dist_to_update = cursor.fetchall()
+    if dist_to_update:
+        import pitch_generator
+        for d in dist_to_update:
+            d_km = pitch_generator.estimate_distance_from_address(d["address"], d["maps_url"] or "")
+            cursor.execute("UPDATE leads SET distance_km = ? WHERE id = ?", (d_km, d["id"]))
 
     conn.commit()
     conn.close()
@@ -199,6 +210,7 @@ def save_lead(lead_data: Dict[str, Any]) -> int:
     import pitch_generator
     phone_type = lead_data.get("phone_type") or pitch_generator.detect_phone_type(lead_data.get("phone", ""))
     assigned_to = lead_data.get("assigned_to") or "Jamilly"
+    distance_km = float(lead_data.get("distance_km") or pitch_generator.estimate_distance_from_address(lead_data.get("address", ""), lead_data.get("maps_url", "")))
 
     cursor.execute(
         """
@@ -206,13 +218,13 @@ def save_lead(lead_data: Dict[str, Any]) -> int:
             campaign_id, name, phone, clean_phone, address, rating, reviews_count,
             website, maps_url, qualification_status, qualification_detail,
             lead_score, lead_temperature, crm_status, notes,
-            assigned_to, phone_type,
+            assigned_to, phone_type, distance_km,
             cold_call_script, whatsapp_script, created_at
         ) VALUES (
             :campaign_id, :name, :phone, :clean_phone, :address, :rating, :reviews_count,
             :website, :maps_url, :qualification_status, :qualification_detail,
             :lead_score, :lead_temperature, :crm_status, :notes,
-            :assigned_to, :phone_type,
+            :assigned_to, :phone_type, :distance_km,
             :cold_call_script, :whatsapp_script, CURRENT_TIMESTAMP
         )
         """,
@@ -234,6 +246,7 @@ def save_lead(lead_data: Dict[str, Any]) -> int:
             "notes": lead_data.get("notes", ""),
             "assigned_to": assigned_to,
             "phone_type": phone_type,
+            "distance_km": distance_km,
             "cold_call_script": lead_data.get("cold_call_script", ""),
             "whatsapp_script": lead_data.get("whatsapp_script", ""),
         },
@@ -348,6 +361,10 @@ def get_leads(campaign_id: Optional[int] = None,
     # Sorting
     if sort_by == "score_desc":
         query += " ORDER BY lead_score DESC, reviews_count DESC"
+    elif sort_by == "dist_asc":
+        query += " ORDER BY distance_km ASC, lead_score DESC"
+    elif sort_by == "dist_desc":
+        query += " ORDER BY distance_km DESC, lead_score DESC"
     elif sort_by == "reviews_desc":
         query += " ORDER BY reviews_count DESC, rating DESC"
     elif sort_by == "rating_desc":
