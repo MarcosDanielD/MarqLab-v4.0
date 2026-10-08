@@ -14,6 +14,7 @@ if not exist ".venv" (
     call .\.venv\Scripts\activate.bat
     echo [INFO] Instalando dependencias necessarias...
     pip install -r requirements.txt
+    python -m playwright install chromium
 ) else (
     call .\.venv\Scripts\activate.bat
 )
