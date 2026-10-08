@@ -282,6 +282,14 @@ def update_lead_crm_status(lead_id: int, crm_status: str, notes: Optional[str] =
     conn.close()
 
 
+def update_lead_website(lead_id: int, website: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE leads SET website = ? WHERE id = ?", (website, lead_id))
+    conn.commit()
+    conn.close()
+
+
 
 def add_log(message: str, level: str = "INFO", campaign_id: Optional[int] = None):
     conn = get_db_connection()

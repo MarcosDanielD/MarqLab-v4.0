@@ -13,30 +13,33 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
 
         body {
             background-color: #0b0f19;
             color: #1e293b;
-            padding: 30px 15px;
+            padding: 24px 15px;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
 
+        /* Top Action Bar (Hidden on Print) */
         .actions-bar {
             width: 100%;
-            max-width: 850px;
+            max-width: 210mm;
             display: flex;
             align-items: center;
             justify-content: space-between;
             margin-bottom: 20px;
-            background: rgba(30, 41, 59, 0.85);
+            background: rgba(30, 41, 59, 0.9);
             backdrop-filter: blur(12px);
             padding: 12px 20px;
             border-radius: 14px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.12);
             color: #fff;
             gap: 12px;
         }
@@ -53,7 +56,7 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 16px;
+            padding: 9px 18px;
             border-radius: 10px;
             font-size: 12px;
             font-weight: 700;
@@ -66,7 +69,7 @@
         .btn-print {
             background: linear-gradient(135deg, #4f46e5, #6366f1);
             color: #fff;
-            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
         }
 
         .btn-print:hover {
@@ -77,163 +80,172 @@
         .btn-secondary {
             background: rgba(255, 255, 255, 0.08);
             color: #cbd5e1;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.12);
         }
 
         .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.14);
+            background: rgba(255, 255, 255, 0.15);
             color: #fff;
         }
 
-        .proposal-paper {
-            width: 100%;
-            max-width: 850px;
+        /* Standard A4 Paper Containers (210mm x 297mm) */
+        .a4-page {
+            width: 210mm;
+            min-height: 297mm;
+            max-width: 100%;
             background: #ffffff;
-            border-radius: 16px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
-            padding: 40px 48px;
+            border-radius: 12px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+            padding: 16mm 18mm;
             color: #0f172a;
             position: relative;
+            margin-bottom: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
-        .header {
+        /* Header */
+        .page-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            border-bottom: 2px solid #f1f5f9;
-            padding-bottom: 22px;
-            margin-bottom: 22px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 14px;
+            margin-bottom: 16px;
         }
 
         .logo-title {
             font-family: 'Space Grotesk', sans-serif;
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 700;
             color: #0f172a;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 7px;
+            line-height: 1.1;
         }
 
         .logo-dot {
-            width: 9px;
-            height: 9px;
+            width: 8px;
+            height: 8px;
             background: #4f46e5;
             border-radius: 50%;
         }
 
         .logo-tag {
-            font-size: 11px;
-            font-weight: 600;
+            font-size: 10px;
+            font-weight: 700;
             color: #64748b;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 2px;
+            letter-spacing: 0.8px;
+            margin-top: 3px;
         }
 
         .meta-info {
             text-align: right;
             font-size: 11px;
             color: #64748b;
-            line-height: 1.6;
+            line-height: 1.5;
         }
 
         .meta-number {
             font-family: monospace;
             font-weight: 700;
             color: #4f46e5;
-            font-size: 13px;
+            font-size: 12px;
         }
 
-        /* Intelligence Card */
-        .client-box {
+        /* Lead Intel Card */
+        .intel-card {
             background: #f8fafc;
-            border-radius: 12px;
             border: 1px solid #e2e8f0;
-            padding: 16px 20px;
-            margin-bottom: 22px;
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 14px;
             display: grid;
-            grid-template-columns: 1.8fr 1.2fr;
-            gap: 16px;
+            grid-template-columns: 1.6fr 1.4fr;
+            gap: 14px;
         }
 
         .box-label {
-            font-size: 10px;
-            font-weight: 700;
+            font-size: 9.5px;
+            font-weight: 800;
             text-transform: uppercase;
             color: #94a3b8;
             letter-spacing: 0.5px;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
 
         .box-val {
-            font-size: 14px;
-            font-weight: 700;
+            font-size: 13.5px;
+            font-weight: 800;
             color: #0f172a;
+            line-height: 1.25;
+            word-break: break-word;
         }
 
         .box-sub {
-            font-size: 11px;
+            font-size: 10.5px;
             color: #64748b;
-            margin-top: 2px;
-            line-height: 1.4;
+            margin-top: 3px;
+            line-height: 1.35;
         }
 
-        .distance-badge {
+        .distance-pill {
             display: inline-flex;
             align-items: center;
             gap: 5px;
             background: #eef2ff;
             color: #4338ca;
             border: 1px solid #c7d2fe;
-            padding: 3px 8px;
-            border-radius: 6px;
-            font-size: 11px;
+            padding: 2.5px 8px;
+            border-radius: 5px;
+            font-size: 10px;
             font-weight: 700;
             margin-top: 4px;
         }
 
-        .section-title {
-            font-size: 12px;
+        /* Section Titles */
+        .section-header {
+            font-size: 11.5px;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: #4f46e5;
-            margin-top: 22px;
-            margin-bottom: 12px;
+            letter-spacing: 0.7px;
+            color: #4338ca;
+            margin-top: 12px;
+            margin-bottom: 8px;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             border-bottom: 1px solid #f1f5f9;
-            padding-bottom: 6px;
+            padding-bottom: 4px;
         }
 
-        .diagnosis-card {
+        /* Diagnóstico Box */
+        .diagnosis-box {
             background: #fff1f2;
-            border-left: 4px solid #f43f5e;
-            padding: 12px 16px;
-            border-radius: 0 10px 10px 0;
-            font-size: 12px;
+            border-left: 3.5px solid #f43f5e;
+            padding: 10px 14px;
+            border-radius: 0 8px 8px 0;
+            font-size: 11px;
             color: #9f1239;
-            margin-bottom: 20px;
-            line-height: 1.5;
+            margin-bottom: 14px;
+            line-height: 1.45;
         }
 
-        /* Cold Call Script Box */
-        .script-card {
+        /* Cold Call Script Card */
+        .script-container {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 18px 20px;
-            margin-bottom: 20px;
-            line-height: 1.55;
-            font-size: 12px;
-            color: #1e293b;
+            border-radius: 10px;
+            padding: 12px 15px;
+            margin-bottom: 12px;
         }
 
         .script-step {
-            margin-bottom: 14px;
-            padding-left: 12px;
+            margin-bottom: 9px;
+            padding-left: 10px;
             border-left: 2px solid #6366f1;
         }
 
@@ -241,203 +253,239 @@
             margin-bottom: 0;
         }
 
-        .script-step-title {
-            font-size: 11px;
+        .step-label {
+            font-size: 10px;
             font-weight: 800;
             text-transform: uppercase;
             color: #4f46e5;
-            margin-bottom: 4px;
+            letter-spacing: 0.4px;
+            margin-bottom: 2px;
         }
 
-        .script-quote {
-            font-style: italic;
+        .step-quote {
+            font-size: 11px;
             color: #0f172a;
             background: #ffffff;
-            padding: 8px 12px;
-            border-radius: 8px;
-            border: 1px solid #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 6px 10px;
+            margin-top: 2px;
+            line-height: 1.4;
             display: block;
-            margin-top: 4px;
         }
 
-        /* Objections Grid */
-        .objections-grid {
+        /* Objections Matrix */
+        .objections-row {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
             margin-top: 10px;
         }
 
-        .objection-item {
+        .objection-card {
             background: #ffffff;
             border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 10px 12px;
-            font-size: 11px;
+            border-radius: 7px;
+            padding: 8px 10px;
+            font-size: 10px;
+            line-height: 1.35;
         }
 
-        .objection-item strong {
+        .objection-title {
             color: #dc2626;
-            display: block;
+            font-weight: 800;
             margin-bottom: 3px;
+            font-size: 9.5px;
+            text-transform: uppercase;
         }
 
         /* Deliverables Grid */
-        .deliverables-grid {
+        .deliverables-container {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 14px;
         }
 
-        .deliverable-item {
+        .deliverable-box {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 10px 12px;
+            border-radius: 8px;
+            padding: 8px 12px;
             display: flex;
             align-items: flex-start;
             gap: 8px;
-            font-size: 11px;
+            font-size: 10.5px;
+            line-height: 1.35;
             color: #334155;
-            line-height: 1.4;
         }
 
         .deliverable-icon {
             color: #10b981;
-            font-size: 15px;
-            flex-shrink: 0;
+            font-size: 14px;
             margin-top: 1px;
+            flex-shrink: 0;
         }
 
-        /* Price Card */
-        .price-card {
+        /* Pricing Card */
+        .pricing-box {
             background: linear-gradient(135deg, #f8fafc, #ede9fe);
-            border: 2px solid #818cf8;
-            border-radius: 12px;
-            padding: 18px 22px;
-            margin-bottom: 20px;
+            border: 1.5px solid #818cf8;
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 14px;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
-        .price-label {
-            font-size: 10px;
-            font-weight: 700;
+        .price-badge {
+            font-size: 9.5px;
+            font-weight: 800;
             text-transform: uppercase;
             color: #6366f1;
             letter-spacing: 0.5px;
         }
 
-        .price-val {
-            font-size: 28px;
+        .price-amount {
+            font-size: 24px;
             font-weight: 800;
             color: #1e1b4b;
+            line-height: 1.1;
         }
 
-        .price-desc {
-            font-size: 11px;
+        .price-note {
+            font-size: 10px;
             color: #64748b;
-            margin-top: 3px;
+            margin-top: 2px;
         }
 
-        .payment-terms {
+        .payment-info {
             text-align: right;
-            font-size: 11px;
-            color: #475569;
-            line-height: 1.5;
+            font-size: 10.5px;
+            color: #334155;
+            line-height: 1.45;
         }
 
-        .payment-badge {
+        .payment-pill {
             display: inline-block;
             background: #dcfce7;
             color: #15803d;
-            padding: 2px 8px;
-            border-radius: 20px;
-            font-size: 10px;
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
-
-        /* WhatsApp Cadence Section */
-        .cadence-box {
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            border-radius: 10px;
-            padding: 12px 16px;
-            margin-bottom: 20px;
-            font-size: 11px;
-            color: #166534;
-        }
-
-        .cadence-item {
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-            border-bottom: 1px dashed #bbf7d0;
-        }
-
-        .cadence-item:last-child {
-            margin-bottom: 0;
-            padding-bottom: 0;
-            border-bottom: none;
-        }
-
-        .cadence-title {
-            font-weight: 700;
-            color: #15803d;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            padding: 2px 7px;
+            border-radius: 12px;
+            font-size: 9.5px;
+            font-weight: 800;
             margin-bottom: 3px;
         }
 
-        .cadence-text {
+        /* WhatsApp Cadence Compact Cards */
+        .cadence-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 7px;
+            margin-bottom: 14px;
+        }
+
+        .cadence-card {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 10.5px;
+            line-height: 1.4;
+        }
+
+        .cadence-tag {
+            font-weight: 800;
+            color: #15803d;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 3px;
+        }
+
+        .cadence-bubble {
             background: #ffffff;
             border: 1px solid #dcfce7;
             border-radius: 6px;
-            padding: 8px 10px;
-            font-family: monospace;
-            font-size: 10.5px;
-            color: #1f2937;
-            white-space: pre-wrap;
-            margin-top: 4px;
+            padding: 6px 10px;
+            color: #1e293b;
+            font-size: 10px;
+            line-height: 1.4;
+            word-break: break-word;
         }
 
-        .footer {
+        /* Agreement / Acceptance Box */
+        .agreement-box {
+            border: 1px dashed #cbd5e1;
+            background: #fafaf9;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 14px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            font-size: 10px;
+        }
+
+        .signature-line {
+            border-top: 1px solid #94a3b8;
+            margin-top: 26px;
+            padding-top: 3px;
+            text-align: center;
+            color: #64748b;
+        }
+
+        /* Page Footer */
+        .page-footer {
             border-top: 1px solid #e2e8f0;
-            padding-top: 16px;
+            padding-top: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 11px;
+            font-size: 10px;
             color: #94a3b8;
+            margin-top: auto;
         }
 
-        .page-break {
-            page-break-before: always;
-            break-before: page;
+        /* Print Specific Strict Standards */
+        @page {
+            size: A4 portrait;
+            margin: 8mm 10mm 8mm 10mm;
         }
 
         @media print {
             body {
-                background: #fff;
-                padding: 0;
+                background: #ffffff !important;
+                padding: 0 !important;
+                margin: 0 !important;
             }
-            .actions-bar {
+
+            .no-print {
                 display: none !important;
             }
-            .proposal-paper {
-                box-shadow: none;
-                border-radius: 0;
-                padding: 15px 25px;
-                max-width: 100%;
+
+            .a4-page {
+                box-shadow: none !important;
+                border: none !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
+                padding: 4mm 6mm !important;
+                width: 100% !important;
+                min-height: 280mm !important;
+                page-break-after: always !important;
+                break-after: page !important;
             }
-            .section-title {
-                margin-top: 16px;
+
+            .a4-page:last-child {
+                page-break-after: avoid !important;
+                break-after: avoid !important;
             }
-            .deliverables-grid, .price-card, .script-card {
-                break-inside: avoid;
+
+            .intel-card, .script-container, .objections-row, .deliverables-container, .pricing-box, .cadence-card, .agreement-box {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
             }
         }
     </style>
@@ -447,10 +495,10 @@
     <!-- Top Action Bar (Hidden on Print) -->
     <div class="actions-bar no-print">
         <div class="actions-left">
-            <i class="ph-bold ph-file-text text-brand-400 text-lg"></i>
+            <i class="ph-bold ph-file-text text-brand-400 text-xl"></i>
             <div>
-                <span>Dossiê Comercial & Proposta</span>
-                <span style="font-size: 11px; color: #94a3b8; display: block;">Roteiro de Ligação + Proposta de R$ 1.000</span>
+                <span style="font-size: 13px; font-weight: 700;">Dossiê Comercial & Proposta (Normas A4)</span>
+                <span style="font-size: 11px; color: #94a3b8; display: block;">Enquadrado em 2 Páginas: Pág 1 (Roteiro Interno) • Pág 2 (Proposta Comercial)</span>
             </div>
         </div>
         <div style="display: flex; gap: 8px;">
@@ -463,210 +511,257 @@
         </div>
     </div>
 
-    <!-- Printable Paper -->
-    <div class="proposal-paper">
-        <!-- Header -->
-        <div class="header">
-            <div>
-                <div class="logo-title">
-                    MARQ LAB <span class="logo-dot"></span>
-                </div>
-                <div class="logo-tag">Performance Digital & Prospecção Ativa B2B</div>
-            </div>
-            <div class="meta-info">
-                <div>Dossiê: <span class="meta-number">#ML-2026-{{ "%04d"|format(lead.id) }}</span></div>
-                <div>Data: <strong>{{ now_date }}</strong></div>
-                <div>SDR Responsável: <strong>{{ lead.assigned_to or 'Jamilly' }}</strong></div>
-            </div>
-        </div>
-
-        <!-- Client & Distance Intelligence -->
-        <div class="client-box">
-            <div>
-                <div class="box-label">Empresa Alvo</div>
-                <div class="box-val">{{ lead.name }}</div>
-                <div class="box-sub">
-                    <i class="ph-bold ph-map-pin"></i> {{ lead.address or 'Brasil' }}
-                </div>
-                <div class="distance-badge">
-                    <i class="ph-bold ph-navigation-arrow"></i>
-                    {% if lead.distance_km is not none %}
-                        {{ "%.1f"|format(lead.distance_km) }} km da sua residência
-                    {% else %}
-                        Distância em cálculo
-                    {% endif %}
-                    (Base: {{ user_base_address }})
-                </div>
-            </div>
-            <div>
-                <div class="box-label">Inteligência Google Maps</div>
-                <div class="box-val">
-                    {{ "%.1f"|format(lead.rating) }} ★ <span style="font-size: 11px; color: #64748b; font-weight: normal;">({{ lead.reviews_count }} avaliações)</span>
-                </div>
-                <div class="box-sub">
-                    <strong>Contato:</strong> {{ lead.phone or 'Telefone no Maps' }} ({{ scripts.phone_type | title }})<br>
-                    <strong>Presença Web:</strong> {{ lead.website or 'Sem website cadastrado' }}
-                </div>
-            </div>
-        </div>
-
-        <!-- Section 1: Diagnóstico da Presença Digital -->
-        <div class="section-title">
-            <i class="ph-bold ph-magnifying-glass"></i> 1. Diagnóstico de Presença & Oportunidade
-        </div>
-        <div class="diagnosis-card">
-            <strong>Falha Comercial Identificada no Google Maps:</strong><br>
-            A empresa possui sólida relevância e avaliações na região, porém atualmente {{ lead.qualification_detail or 'não possui Landing Page estruturada para smartphones ou necessita de modernização técnica' }}. Clientes com alta urgência que pesquisam no Google Maps acabam desistindo ou caindo em concorrentes diretos por não encontrarem um botão rápido de WhatsApp e apresentação limpa.
-        </div>
-
-        <!-- Section 2: Roteiro Completo de Cold Call (Ligação Telefônica) -->
-        <div class="section-title">
-            <i class="ph-bold ph-phone-call"></i> 2. Roteiro de Ligação (Cold Call de Alta Conversão)
-        </div>
-        <div class="script-card">
-            <div class="script-step">
-                <div class="script-step-title">Passo 1: Quebra de Gelo com Autoridade Local</div>
-                <div>Fale com o tom calmo, seguro e direto com o tomador de decisão:</div>
-                <span class="script-quote">
-                    "Olá, tudo bem? Falo com o responsável pelo atendimento ou comercial da {{ lead.name }}?<br>
-                    O motivo do meu contato é que eu estava analisando as principais referências de serviços aqui da região{% if lead.distance_km is not none %} (estamos a {{ "%.1f"|format(lead.distance_km) }} km de vocês){% endif %} e fiz questão de ligar para parabenizar pelas {{ lead.reviews_count }} avaliações e nota {{ "%.1f"|format(lead.rating) }} no Google."
-                </span>
-            </div>
-
-            <div class="script-step">
-                <div class="script-step-title">Passo 2: O Gancho do Problema (Diagnóstico Real)</div>
-                <span class="script-quote">
-                    {% if 'Sem Site' in lead.qualification_status %}
-                    "Porém, notei que quem pesquisa pela {{ lead.name }} no celular ainda não encontra um site ou Landing Page com WhatsApp direto. Hoje, a maioria prefere clicar antes de ligar e vocês acabam perdendo clientes para os concorrentes."
-                    {% else %}
-                    "Porém, ao analisar o site atual de vocês ({{ lead.website }}), vi que ele não está 100% adaptado para celulares ou carrega com lentidão, o que faz os visitantes desistirem do contato no WhatsApp."
-                    {% endif %}
-                </span>
-            </div>
-
-            <div class="script-step">
-                <div class="script-step-title">Passo 3: A Solução e Proposta de R$ 1.000</div>
-                <span class="script-quote">
-                    "Nós criamos Landing Pages ultra-rápidas para celular, com botão de WhatsApp direto, entregues em até 5 dias. O investimento é um valor único de R$ 1.000,00, sem nenhuma taxa mensal. Um único cliente que fechar com vocês já paga o projeto inteiro."
-                </span>
-            </div>
-
-            <div class="script-step">
-                <div class="script-step-title">Passo 4: Fechamento / Agendamento</div>
-                <span class="script-quote">
-                    "Eu estruturei uma prévia de como ficaria a nova página da {{ lead.name }}. Posso enviar no seu WhatsApp agora ou prefere que a gente marque 10 minutos hoje para eu te mostrar?"
-                </span>
-            </div>
-
-            <!-- Contorno de Objeções -->
-            <div style="margin-top: 14px;">
-                <strong style="font-size: 10px; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px;">Respostas para as 3 Objeções Mais Frequentes:</strong>
-                <div class="objections-grid">
-                    <div class="objection-item">
-                        <strong>"Já temos Instagram, não precisamos de site"</strong>
-                        "O Instagram é ótimo para ver fotos, mas quem está com urgência no Google quer clicar e falar no WhatsApp em 5 segundos. O site fecha o cliente pronto."
+    <!-- ========================================================================= -->
+    <!-- PÁGINA 1: DOSSIÊ DE INTELIGÊNCIA & ROTEIRO DE LIGAÇÃO (COLD CALL + OBJEÇÕES) -->
+    <!-- ========================================================================= -->
+    <div class="a4-page">
+        <div>
+            <!-- Header -->
+            <div class="page-header">
+                <div>
+                    <div class="logo-title">
+                        MARQ LAB <span class="logo-dot"></span>
                     </div>
-                    <div class="objection-item">
-                        <strong>"Não temos verba ou interesse agora"</strong>
-                        "Entendo perfeitamente. Por isso o valor é único de R$ 1.000 (R$ 500 de entrada). Se a página te trouxer só mais 1 cliente, ela já se pagou 100%."
+                    <div class="logo-tag">Performance Digital & Captação Ativa B2B</div>
+                </div>
+                <div class="meta-info">
+                    <div>Dossiê de Prospecção: <span class="meta-number">#ML-2026-{{ "%04d"|format(lead.id) }}</span></div>
+                    <div>Data: <strong>{{ now_date }}</strong></div>
+                    <div>SDR / Closer: <strong>{{ lead.assigned_to or 'Jamilly' }}</strong></div>
+                </div>
+            </div>
+
+            <!-- Client & Distance Intelligence -->
+            <div class="intel-card">
+                <div>
+                    <div class="box-label">Empresa Alvo</div>
+                    <div class="box-val">{{ lead.name }}</div>
+                    <div class="box-sub">
+                        <i class="ph-bold ph-map-pin"></i> {{ lead.address or 'Brasil' }}
+                    </div>
+                    <div class="distance-pill">
+                        <i class="ph-bold ph-navigation-arrow"></i>
+                        {% if lead.distance_km is not none %}
+                            {{ "%.1f"|format(lead.distance_km) }} km da sua residência
+                        {% else %}
+                            Distância em cálculo
+                        {% endif %}
+                        (Base: {{ user_base_address }})
+                    </div>
+                </div>
+                <div>
+                    <div class="box-label">Inteligência Google Maps</div>
+                    <div class="box-val">
+                        {{ "%.1f"|format(lead.rating) }} ★ <span style="font-size: 11px; color: #64748b; font-weight: normal;">({{ lead.reviews_count }} avaliações)</span>
+                    </div>
+                    <div class="box-sub">
+                        <strong>Contato:</strong> {{ lead.phone or 'Telefone no Maps' }} ({{ scripts.phone_type | title }})<br>
+                        <strong>Website:</strong> {{ lead.website or 'Sem website cadastrado' }}
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Section 3: Cadência de WhatsApp (Mensagens de Apoio) -->
-        <div class="section-title">
-            <i class="ph-bold ph-whatsapp-logo"></i> 3. Mensagens de Apoio para WhatsApp
-        </div>
-        <div class="cadence-box">
-            <div class="cadence-item">
-                <div class="cadence-title"><i class="ph-bold ph-chat-circle-dots"></i> 1º Toque (Após Ligação ou Abordagem Inicial):</div>
-                <div class="cadence-text">{{ scripts.whatsapp_script }}</div>
+            <!-- Section 1: Diagnóstico de Presença Digital -->
+            <div class="section-header">
+                <i class="ph-bold ph-magnifying-glass"></i> 1. Diagnóstico de Presença Digital & Oportunidade
             </div>
-            <div class="cadence-item">
-                <div class="cadence-title"><i class="ph-bold ph-clock-counter-clockwise"></i> Follow-up D+2 (Prova Social & Retorno):</div>
-                <div class="cadence-text">{{ scripts.whatsapp_followup_1 }}</div>
+            <div class="diagnosis-box">
+                <strong>Oportunidade Comercial Identificada no Google Maps:</strong><br>
+                A empresa possui excelente relevância e avaliações na região, porém atualmente {{ lead.qualification_detail or 'não possui Landing Page estruturada para smartphones ou necessita de modernização técnica' }}. Clientes com alta urgência que pesquisam no Google Maps acabam desistindo ou buscando concorrentes locais por não encontrarem um botão rápido de WhatsApp e apresentação limpa.
             </div>
-            <div class="cadence-item">
-                <div class="cadence-title"><i class="ph-bold ph-seal-warning"></i> Follow-up D+5 (Escassez de Vagas):</div>
-                <div class="cadence-text">{{ scripts.whatsapp_followup_2 }}</div>
-            </div>
-        </div>
 
-        <!-- Section 4: Proposta Comercial Formal (Landing Page) -->
-        <div class="section-title">
-            <i class="ph-bold ph-sparkle"></i> 4. Proposta Comercial Formal (Landing Page de Alta Conversão)
-        </div>
-        <div class="deliverables-grid">
-            <div class="deliverable-item">
-                <i class="ph-bold ph-check-circle deliverable-icon"></i>
-                <div>
-                    <strong>Design 100% Mobile First</strong><br>
-                    Totalmente adaptado para quem busca no celular via Google Maps.
-                </div>
+            <!-- Section 2: Roteiro Estruturado de Cold Call (Telemarketing Ativo) -->
+            <div class="section-header">
+                <i class="ph-bold ph-phone-call"></i> 2. Roteiro Estruturado de Cold Call (Ligação de Alta Conversão)
             </div>
-            <div class="deliverable-item">
-                <i class="ph-bold ph-check-circle deliverable-icon"></i>
-                <div>
-                    <strong>Botão WhatsApp 1-Clique</strong><br>
-                    Conversão direta com mensagem personalizada pronta para envio.
+            <div class="script-container">
+                <div class="script-step">
+                    <div class="step-label">Passo 1: Quebra de Gelo com Autoridade Local</div>
+                    <span class="step-quote">
+                        "Olá, tudo bem? Falo com o responsável pelo atendimento ou comercial da {{ lead.name }}?<br>
+                        O motivo do meu contato é que eu estava analisando as principais referências de serviços aqui da região{% if lead.distance_km is not none %} (estamos a {{ "%.1f"|format(lead.distance_km) }} km de vocês){% endif %} e fiz questão de ligar para parabenizar pelas {{ lead.reviews_count }} avaliações e nota {{ "%.1f"|format(lead.rating) }} no Google."
+                    </span>
                 </div>
-            </div>
-            <div class="deliverable-item">
-                <i class="ph-bold ph-check-circle deliverable-icon"></i>
-                <div>
-                    <strong>Certificado SSL Incluso</strong><br>
-                    Navegação 100% segura (HTTPS), transmitindo máxima credibilidade.
-                </div>
-            </div>
-            <div class="deliverable-item">
-                <i class="ph-bold ph-check-circle deliverable-icon"></i>
-                <div>
-                    <strong>Velocidade Ultra-Rápida</strong><br>
-                    Carregamento instantâneo em menos de 2s para evitar perda de clientes.
-                </div>
-            </div>
-            <div class="deliverable-item">
-                <i class="ph-bold ph-check-circle deliverable-icon"></i>
-                <div>
-                    <strong>SEO Local Integrado</strong><br>
-                    Otimizado para manter destaque nos primeiros resultados da cidade.
-                </div>
-            </div>
-            <div class="deliverable-item">
-                <i class="ph-bold ph-check-circle deliverable-icon"></i>
-                <div>
-                    <strong>Entrega Ágil em até 5 Dias</strong><br>
-                    Ciclo rápido com garantia de satisfação e revisão completa.
-                </div>
-            </div>
-        </div>
 
-        <!-- Investimento -->
-        <div class="price-card">
-            <div>
-                <div class="price-label">Investimento Total Único</div>
-                <div class="price-val">R$ 1.000,00</div>
-                <div class="price-desc">Sem mensalidades recorrentes, sem custos surpresa ou fidelidade.</div>
+                <div class="script-step">
+                    <div class="step-label">Passo 2: O Gancho do Problema (Diagnóstico Real)</div>
+                    <span class="step-quote">
+                        {% if 'Sem Site' in lead.qualification_status %}
+                        "Porém, notei que quem pesquisa pela {{ lead.name }} no celular ainda não encontra um site ou Landing Page com WhatsApp direto. Hoje, a maioria prefere clicar antes de ligar e vocês acabam perdendo clientes para os concorrentes."
+                        {% else %}
+                        "Porém, ao analisar o site atual de vocês ({{ lead.website }}), vi que ele não está 100% adaptado para celulares ou carrega com lentidão, o que faz os visitantes desistirem do contato no WhatsApp."
+                        {% endif %}
+                    </span>
+                </div>
+
+                <div class="script-step">
+                    <div class="step-label">Passo 3: A Solução e Proposta Comercial (R$ 1.000)</div>
+                    <span class="step-quote">
+                        "Nós criamos Landing Pages ultra-rápidas para celular, com botão de WhatsApp direto, entregues em até 5 dias úteis. O investimento é um valor único de R$ 1.000,00, sem nenhuma mensalidade. Um único cliente que fechar com vocês já paga o projeto inteiro."
+                    </span>
+                </div>
+
+                <div class="script-step">
+                    <div class="step-label">Passo 4: Fechamento / Agendamento</div>
+                    <span class="step-quote">
+                        "Eu estruturei uma prévia de como ficaria a nova página da {{ lead.name }}. Posso enviar no seu WhatsApp agora ou prefere marcarmos 10 minutos hoje para eu te mostrar?"
+                    </span>
+                </div>
             </div>
-            <div class="payment-terms">
-                <span class="payment-badge">Condição Facilitada</span><br>
-                <strong>50% de entrada:</strong> R$ 500,00 para início imediato<br>
-                <strong>50% na aprovação:</strong> R$ 500,00 na entrega final<br>
-                <small>Pagamento facilitado via PIX ou Transferência Bancária</small>
+
+            <!-- Matriz de Contorno das 3 Objeções Mais Frequentes -->
+            <div class="section-header" style="margin-top: 10px;">
+                <i class="ph-bold ph-shield-check"></i> Matriz de Resposta para as 3 Objeções Frequentes
+            </div>
+            <div class="objections-row">
+                <div class="objection-card">
+                    <div class="objection-title">1. "Já temos Instagram"</div>
+                    "O Instagram é ótimo para fotos, mas quem está com urgência no Google quer clicar e falar no WhatsApp em 5 segundos. O site fecha o cliente pronto."
+                </div>
+                <div class="objection-card">
+                    <div class="objection-title">2. "Sem verba agora"</div>
+                    "Entendo. Por isso o valor é único de R$ 1.000 (R$ 500 de entrada). Se a página te trouxer apenas 1 cliente a mais, ela já se pagou 100%."
+                </div>
+                <div class="objection-card">
+                    <div class="objection-title">3. "Manda por e-mail"</div>
+                    "Com certeza. Para facilitar seu dia, posso enviar direto no seu WhatsApp com 3 pontos práticos que identifiquei no Google Maps?"
+                </div>
             </div>
         </div>
 
-        <!-- Footer / Aceite -->
-        <div class="footer">
-            <div>
-                <strong>MARQ LAB</strong> • Performance Digital & Captação Ativa B2B<br>
-                Validade da proposta: 7 dias corridos a partir da emissão.
+        <!-- Footer Página 1 -->
+        <div class="page-footer">
+            <div>MARQ LAB • Dossiê Comercial e Roteiro de Prospecção</div>
+            <div>Página 1 de 2 • Documento Interno de Apoio ao SDR</div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- PÁGINA 2: PROPOSTA COMERCIAL FORMAL (LANDING PAGE DE ALTA CONVERSÃO) -->
+    <!-- ========================================================================= -->
+    <div class="a4-page">
+        <div>
+            <!-- Header Página 2 -->
+            <div class="page-header">
+                <div>
+                    <div class="logo-title">
+                        MARQ LAB <span class="logo-dot"></span>
+                    </div>
+                    <div class="logo-tag">Proposta Comercial Formal • Landing Page Corporativa</div>
+                </div>
+                <div class="meta-info">
+                    <div>Proposta Ref: <span class="meta-number">#PROP-{{ "%04d"|format(lead.id) }}</span></div>
+                    <div>Cliente: <strong>{{ lead.name }}</strong></div>
+                    <div>Emissão: <strong>{{ now_date }}</strong></div>
+                </div>
             </div>
-            <div style="text-align: right;">
-                Atendimento: <strong>{{ lead.assigned_to or 'Jamilly' }}</strong><br>
-                <span style="font-family: monospace; font-size: 10px;">Status: Aprovado para Apresentação</span>
+
+            <!-- Section 3: Cadência de WhatsApp (Mensagens de Apoio) -->
+            <div class="section-header">
+                <i class="ph-bold ph-whatsapp-logo"></i> 3. Cadência de Mensagens de WhatsApp (Follow-up)
             </div>
+            <div class="cadence-grid">
+                <div class="cadence-card">
+                    <div class="cadence-tag"><i class="ph-bold ph-chat-circle-dots"></i> 1º Toque (Após Ligação ou Abordagem Inicial):</div>
+                    <div class="cadence-bubble">{{ scripts.whatsapp_script }}</div>
+                </div>
+                <div class="cadence-card">
+                    <div class="cadence-tag"><i class="ph-bold ph-clock-counter-clockwise"></i> Follow-up D+2 (Prova Social & Retorno do Investimento):</div>
+                    <div class="cadence-bubble">{{ scripts.whatsapp_followup_1 }}</div>
+                </div>
+                <div class="cadence-card">
+                    <div class="cadence-tag"><i class="ph-bold ph-seal-warning"></i> Follow-up D+5 (Escassez de Vagas da Semana):</div>
+                    <div class="cadence-bubble">{{ scripts.whatsapp_followup_2 }}</div>
+                </div>
+            </div>
+
+            <!-- Section 4: Escopo dos Entregáveis -->
+            <div class="section-header">
+                <i class="ph-bold ph-sparkle"></i> 4. Escopo do Projeto: Landing Page de Alta Conversão
+            </div>
+            <div class="deliverables-container">
+                <div class="deliverable-box">
+                    <i class="ph-bold ph-check-circle deliverable-icon"></i>
+                    <div>
+                        <strong>Design 100% Mobile First</strong><br>
+                        Perfeitamente adaptado para quem pesquisa em smartphones no Google Maps.
+                    </div>
+                </div>
+                <div class="deliverable-box">
+                    <i class="ph-bold ph-check-circle deliverable-icon"></i>
+                    <div>
+                        <strong>Botão WhatsApp 1-Clique</strong><br>
+                        Chamada direta para conversa com mensagem personalizada de contato.
+                    </div>
+                </div>
+                <div class="deliverable-box">
+                    <i class="ph-bold ph-check-circle deliverable-icon"></i>
+                    <div>
+                        <strong>Certificado de Segurança SSL Incluso</strong><br>
+                        Navegação 100% segura (HTTPS), transmitindo máxima confiança imediata.
+                    </div>
+                </div>
+                <div class="deliverable-box">
+                    <i class="ph-bold ph-check-circle deliverable-icon"></i>
+                    <div>
+                        <strong>Carregamento Ultra-Rápido</strong><br>
+                        Abertura em menos de 2 segundos para evitar abandono e perda de clientes.
+                    </div>
+                </div>
+                <div class="deliverable-box">
+                    <i class="ph-bold ph-check-circle deliverable-icon"></i>
+                    <div>
+                        <strong>Otimização SEO Local Google</strong><br>
+                        Configurado para rankear nas primeiras posições de busca na cidade.
+                    </div>
+                </div>
+                <div class="deliverable-box">
+                    <i class="ph-bold ph-check-circle deliverable-icon"></i>
+                    <div>
+                        <strong>Entrega Rápida em até 5 Dias</strong><br>
+                        Cronograma ágil de produção, revisão, testes e publicação no domínio.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 5: Condição Comercial Exclusiva -->
+            <div class="section-header">
+                <i class="ph-bold ph-tag"></i> 5. Condição Comercial Exclusiva
+            </div>
+            <div class="pricing-box">
+                <div>
+                    <div class="price-badge">Investimento Total Único</div>
+                    <div class="price-amount">R$ 1.000,00</div>
+                    <div class="price-note">Sem mensalidades ocultas, sem contratos de fidelidade ou taxas extras.</div>
+                </div>
+                <div class="payment-info">
+                    <span class="payment-pill">Condição Facilitada</span><br>
+                    <strong>50% de entrada:</strong> R$ 500,00 no início do projeto<br>
+                    <strong>50% na aprovação:</strong> R$ 500,00 na entrega final da página<br>
+                    <small style="color: #64748b;">Pagamento via Chave PIX ou Transferência Bancária</small>
+                </div>
+            </div>
+
+            <!-- Termos e Aceite -->
+            <div class="agreement-box">
+                <div>
+                    <strong>Termos e Validade:</strong><br>
+                    • Validade desta proposta: 7 dias corridos a partir da emissão.<br>
+                    • Garantia de satisfação com até 2 rodadas de revisões inclusas.<br>
+                    • Suporte técnico pós-publicação incluso por 30 dias.
+                </div>
+                <div>
+                    <div class="signature-line">
+                        De Acordo / Assinatura do Cliente ({{ lead.name }})
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Página 2 -->
+        <div class="page-footer">
+            <div>MARQ LAB • Performance Digital & Captação Ativa B2B</div>
+            <div>Página 2 de 2 • Proposta Comercial Oficial</div>
         </div>
     </div>
 

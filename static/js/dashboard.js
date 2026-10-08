@@ -1577,7 +1577,7 @@ async function executeClearLeads() {
 // ----------------------------------------------------
 // 16. WEBSITE SCREENSHOT VIEWER (PLAYWRIGHT PROOF)
 // ----------------------------------------------------
-async function openScreenshotModal(leadId, leadName, websiteUrl, auditDetail) {
+async function openScreenshotModal(leadId, leadName, websiteUrl, auditDetail, refresh = false) {
     const modal = document.getElementById('screenshotModal');
     const titleEl = document.getElementById('screenshotModalTitle');
     const urlEl = document.getElementById('screenshotModalUrl');
@@ -1608,16 +1608,23 @@ async function openScreenshotModal(leadId, leadName, websiteUrl, auditDetail) {
     if (modal) modal.classList.remove('hidden');
 
     try {
-        const res = await fetch(`/api/lead/${leadId}/screenshot`);
+        const urlToFetch = refresh ? `/api/lead/${leadId}/screenshot?refresh=1` : `/api/lead/${leadId}/screenshot`;
+        const res = await fetch(urlToFetch);
         const data = await res.json();
         if (data.success && data.screenshot_url) {
+            const timeLabel = data.cached_at || 'agora';
             container.innerHTML = `
                 <div class="w-full flex flex-col items-center gap-2">
                     <img src="${data.screenshot_url}?t=${Date.now()}" alt="Screenshot de ${escapeHtml(leadName)}"
-                        class="w-full max-h-[65vh] object-contain object-top rounded-lg shadow-2xl border border-slate-700 bg-white">
-                    <div class="text-[10px] text-slate-400 flex items-center gap-2">
-                        <i class="ph-bold ph-check text-emerald-400"></i>
-                        <span>Capturado em ${new Date(data.cached_at).toLocaleString('pt-BR')} via Playwright Headless</span>
+                        class="w-full max-h-[65vh] object-contain object-top rounded-lg shadow-2xl border border-slate-700 bg-white transition-transform hover:scale-[1.01]">
+                    <div class="text-[10px] text-slate-400 flex items-center justify-between w-full px-2 pt-1">
+                        <span class="flex items-center gap-1.5 text-emerald-400">
+                            <i class="ph-bold ph-check"></i>
+                            <span>Capturado em ${escapeHtml(timeLabel)}</span>
+                        </span>
+                        <button onclick="openScreenshotModal(${leadId}, '${escapeHtml(leadName)}', '${escapeHtml(websiteUrl)}', '${escapeHtml(auditDetail || '')}', true)" class="text-[10px] text-brand-400 hover:text-brand-300 underline flex items-center gap-1">
+                            <i class="ph-bold ph-arrows-clockwise"></i> Recarregar Print
+                        </button>
                     </div>
                 </div>
             `;
@@ -1627,6 +1634,9 @@ async function openScreenshotModal(leadId, leadName, websiteUrl, auditDetail) {
                     <i class="ph-bold ph-warning-octagon text-3xl"></i>
                     <p class="text-xs font-bold">${escapeHtml(data.error || 'Não foi possível capturar o print deste site.')}</p>
                     <p class="text-[11px] text-slate-400">O servidor do cliente pode estar offline, bloqueando automações ou sem certificado SSL.</p>
+                    <button onclick="openScreenshotModal(${leadId}, '${escapeHtml(leadName)}', '${escapeHtml(websiteUrl)}', '${escapeHtml(auditDetail || '')}', true)" class="mt-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white">
+                        Tentar Novamente
+                    </button>
                 </div>
             `;
         }
@@ -1636,6 +1646,9 @@ async function openScreenshotModal(leadId, leadName, websiteUrl, auditDetail) {
                 <i class="ph-bold ph-x-circle text-3xl"></i>
                 <p class="text-xs font-bold">Falha de conexão com o servidor.</p>
                 <p class="text-[11px] text-slate-400">${escapeHtml(err.message)}</p>
+                <button onclick="openScreenshotModal(${leadId}, '${escapeHtml(leadName)}', '${escapeHtml(websiteUrl)}', '${escapeHtml(auditDetail || '')}', true)" class="mt-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white">
+                    Tentar Novamente
+                </button>
             </div>
         `;
     }

@@ -344,30 +344,44 @@ def proposal_print_view(lead_id):
     )
 
 
+def resolve_google_ad_url(url: str) -> str:
+    """Follows Google /aclk or redirect link to obtain the real company website URL."""
+    if "/aclk" in url or "google.com/url" in url:
+        if url.startswith("/"):
+            url = f"https://www.google.com{url}"
+        try:
+            import urllib.request
+            class NoRedirect(urllib.request.HTTPRedirectHandler):
+                def redirect_request(self, req, fp, code, msg, headers, newurl):
+                    self.target_url = newurl
+                    return None
+            handler = NoRedirect()
+            opener = urllib.request.build_opener(handler)
+            opener.addheaders = [("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")]
+            try:
+                opener.open(url, timeout=5)
+            except Exception:
+                if hasattr(handler, "target_url") and handler.target_url:
+                    return handler.target_url
+        except Exception:
+            pass
+    return url
+
+
 @app.route("/api/lead/<int:lead_id>/screenshot", methods=["GET"])
 def lead_screenshot_api(lead_id):
     lead = database.get_lead_by_id(lead_id)
     if not lead:
         return jsonify({"success": False, "error": "Lead não encontrado."}), 404
 
-    website = (lead.get("website") or "").strip()
-    if not website:
+    raw_website = (lead.get("website") or "").strip()
+    if not raw_website:
         return jsonify({"success": False, "error": "Este lead não possui website cadastrado no Google Maps."}), 400
 
-    # Extract real target URL if it's a Google ad link or relative link
-    if "adurl=" in website:
-        try:
-            import urllib.parse
-            parsed = urllib.parse.urlparse(website)
-            qs = urllib.parse.parse_qs(parsed.query)
-            adurl_list = qs.get("adurl", [])
-            if adurl_list and adurl_list[0].strip():
-                website = adurl_list[0].strip()
-        except Exception:
-            pass
-
-    if website.startswith("/"):
-        website = f"https://www.google.com{website}"
+    # 1. Resolve redirect or ad click URLs
+    website = resolve_google_ad_url(raw_website)
+    if website != raw_website:
+        database.update_lead_website(lead_id, website)
 
     if not website.startswith("http://") and not website.startswith("https://"):
         website = f"http://{website}"
@@ -390,6 +404,8 @@ def lead_screenshot_api(lead_id):
             "cached_at": datetime.fromtimestamp(os.path.getmtime(filepath)).strftime("%d/%m/%Y %H:%M")
         })
 
+    is_wa = "wa.me" in website.lower() or "whatsapp.com" in website.lower()
+
     try:
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:
@@ -411,9 +427,97 @@ def lead_screenshot_api(lead_id):
                 ignore_https_errors=True
             )
             page = context.new_page()
-            page.goto(website, timeout=14000, wait_until="domcontentloaded")
-            time.sleep(1.5)
-            page.screenshot(path=filepath, full_page=False)
+
+            if is_wa:
+                # Specialized Diagnostic Card for WhatsApp-only businesses
+                lead_name_escaped = lead.get("name", "Empresa")
+                page.set_content(f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <style>
+                        body {{ margin: 0; background: #0f172a; font-family: 'Segoe UI', system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; color: white; }}
+                        .card {{ background: #1e293b; border: 2px solid #10b981; border-radius: 20px; padding: 45px 55px; max-width: 680px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }}
+                        .icon {{ font-size: 54px; margin-bottom: 15px; }}
+                        h2 {{ margin: 0 0 10px 0; color: #34d399; font-size: 24px; }}
+                        .lead-name {{ font-size: 18px; font-weight: 700; color: #f8fafc; margin-bottom: 15px; }}
+                        .url-box {{ background: rgba(0,0,0,0.3); border: 1px solid #334155; padding: 10px 16px; border-radius: 10px; font-family: monospace; font-size: 13px; color: #a7f3d0; word-break: break-all; margin-bottom: 22px; }}
+                        p {{ font-size: 13.5px; color: #94a3b8; line-height: 1.6; margin: 0 0 15px 0; }}
+                        .highlight {{ background: rgba(16, 185, 129, 0.1); border-left: 4px solid #10b981; padding: 12px 18px; text-align: left; border-radius: 0 10px 10px 0; font-size: 12.5px; color: #e2e8f0; }}
+                    </style>
+                </head>
+                <body>
+                    <div class="card">
+                        <div class="icon">📱</div>
+                        <h2>Canal Direto: Apenas WhatsApp Cadastrado</h2>
+                        <div class="lead-name">{lead_name_escaped}</div>
+                        <div class="url-box">{website}</div>
+                        <p>Esta empresa não possui website corporativo cadastrado no Google Maps; apenas um link direto para o WhatsApp.</p>
+                        <div class="highlight">
+                            <strong>🎯 Argumento Comercial Matador:</strong><br>
+                            A empresa depende 100% de cliques no link do WhatsApp e não possui uma Landing Page de apresentação com catálogo, serviços e autoridade. Excelente alvo para a oferta de R$ 1.000,00!
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """)
+                time.sleep(0.5)
+                page.screenshot(path=filepath, full_page=False)
+            else:
+                load_success = False
+                error_msg = ""
+                try:
+                    page.goto(website, timeout=12000, wait_until="domcontentloaded")
+                    load_success = True
+                except Exception as e_load:
+                    error_msg = str(e_load)
+                    try:
+                        page.goto(website, timeout=6000, wait_until="commit")
+                        load_success = True
+                    except Exception:
+                        pass
+
+                if load_success:
+                    time.sleep(1.2)
+                    page.screenshot(path=filepath, full_page=False)
+                else:
+                    # Render visual Diagnostic Error Card for unreachable/offline sites
+                    lead_name_escaped = lead.get("name", "Empresa")
+                    page.set_content(f"""
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <style>
+                            body {{ margin: 0; background: #0f172a; font-family: 'Segoe UI', system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; color: white; }}
+                            .card {{ background: #1e293b; border: 2px solid #ef4444; border-radius: 20px; padding: 45px 55px; max-width: 680px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }}
+                            .icon {{ font-size: 54px; margin-bottom: 15px; }}
+                            h2 {{ margin: 0 0 10px 0; color: #f87171; font-size: 24px; }}
+                            .lead-name {{ font-size: 18px; font-weight: 700; color: #f8fafc; margin-bottom: 15px; }}
+                            .url-box {{ background: rgba(0,0,0,0.3); border: 1px solid #334155; padding: 10px 16px; border-radius: 10px; font-family: monospace; font-size: 13px; color: #fca5a5; word-break: break-all; margin-bottom: 22px; }}
+                            p {{ font-size: 13.5px; color: #94a3b8; line-height: 1.6; margin: 0 0 15px 0; }}
+                            .highlight {{ background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; padding: 12px 18px; text-align: left; border-radius: 0 10px 10px 0; font-size: 12.5px; color: #e2e8f0; }}
+                        </style>
+                    </head>
+                    <body>
+                        <div class="card">
+                            <div class="icon">⚠️</div>
+                            <h2>Site Oficial Inacessível / Fora do Ar</h2>
+                            <div class="lead-name">{lead_name_escaped}</div>
+                            <div class="url-box">{website}</div>
+                            <p>O servidor desta empresa não está respondendo, está fora do ar ou com falha de conexão (DNS / SSL).</p>
+                            <div class="highlight">
+                                <strong>🎯 Argumento Comercial de Fechamento:</strong><br>
+                                "Olá! Liguei porque tentei acessar o site oficial de vocês pelo Google Maps e ele está dando erro de conexão. Vocês sabiam disso? Clientes que pesquisam no Google estão caindo em uma página fora do ar!"
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                    """)
+                    time.sleep(0.5)
+                    page.screenshot(path=filepath, full_page=False)
+
             browser.close()
 
         return jsonify({
@@ -428,7 +532,7 @@ def lead_screenshot_api(lead_id):
     except Exception as e:
         return jsonify({
             "success": False,
-            "error": f"Não foi possível renderizar a página do cliente: {str(e)}",
+            "error": f"Erro no motor de captura: {str(e)}",
             "website": website
         })
 
