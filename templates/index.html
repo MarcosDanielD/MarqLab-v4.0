@@ -173,7 +173,7 @@
     <div id="mainWrapper" class="main-wrapper lg:pl-52 flex flex-col min-h-screen">
         
         <!-- Top App Header -->
-        <header class="sticky top-0 z-30 h-13 border-b border-stone-200/90 dark:border-darkborder backdrop-blur-md bg-[#FAF9F6]/90 dark:bg-darkbg/90 flex items-center justify-between px-4 sm:px-6 transition-colors">
+        <header class="sticky top-0 z-30 h-[52px] border-b border-stone-200/90 dark:border-darkborder backdrop-blur-md bg-[#FAF9F6]/90 dark:bg-darkbg/90 flex items-center justify-between px-4 sm:px-6 transition-colors">
             <!-- Left: Hamburger Toggle + View Title -->
             <div class="flex items-center gap-2.5">
                 <button id="btnToggleSidebar" onclick="toggleSidebarCollapse()" class="p-1.5 rounded-lg border border-stone-200 dark:border-darkborder bg-white dark:bg-darkcard text-stone-700 dark:text-stone-200 hover:border-stone-400 transition" title="Recolher / Expandir Menu Lateral">
@@ -455,19 +455,19 @@
                         <div class="relative">
                             <select id="filterPhoneType" class="w-full px-2.5 py-1.5 rounded-md border border-stone-200 dark:border-darkborder bg-[#FAF9F6] dark:bg-darkcard text-xs text-stone-800 dark:text-stone-200 focus:outline-none focus:border-stone-900 dark:focus:border-stone-100 transition cursor-pointer">
                                 <option value="all">Contato: Todos</option>
-                                <option value="whatsapp">📱 Celular / Whats</option>
-                                <option value="landline">☎ Linha Fixa</option>
+                                <option value="whatsapp">Celular / WhatsApp</option>
+                                <option value="landline">Linha Fixa</option>
                             </select>
                         </div>
 
                         <!-- 6. Ordenação & Proximidade da Minha Casa -->
                         <div class="relative">
                             <select id="filterSort" class="w-full px-2.5 py-1.5 rounded-md border border-stone-200 dark:border-darkborder bg-[#FAF9F6] dark:bg-darkcard text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none focus:border-stone-900 dark:focus:border-stone-100 transition cursor-pointer">
-                                <option value="score_desc">⚡ Score (Padrão)</option>
-                                <option value="dist_asc">📍 Mais Próximos de Mim</option>
-                                <option value="dist_desc">📍 Mais Distantes</option>
-                                <option value="reviews_desc">★ Mais Avaliados</option>
-                                <option value="rating_desc">★ Maior Nota</option>
+                                <option value="score_desc">Ordenar: Score (padrão)</option>
+                                <option value="dist_asc">Ordenar: Mais próximos</option>
+                                <option value="dist_desc">Ordenar: Mais distantes</option>
+                                <option value="reviews_desc">Ordenar: Mais avaliados</option>
+                                <option value="rating_desc">Ordenar: Maior nota</option>
                             </select>
                         </div>
                     </div>
@@ -600,7 +600,7 @@
                     <div class="lg:col-span-7 glass-panel p-4 sm:p-5 rounded-xl flex flex-col justify-between">
                         <div>
                             <h4 class="font-bold text-xs text-stone-900 dark:text-white mb-0.5">Funil Comercial de Conversão</h4>
-                            <p class="text-[11px] text-stone-500 dark:text-stone-400 mb-3">Etapas de avanço: Minerados ➔ Oportunidades ➔ Em Contato ➔ Reuniões ➔ Fechados.</p>
+                            <p class="text-[11px] text-stone-500 dark:text-stone-400 mb-3">Etapas de avanço: Minerados / Oportunidades / Em Contato / Reuniões / Fechados.</p>
                         </div>
                         <div class="relative h-64">
                             <canvas id="chartFunnel"></canvas>
@@ -872,8 +872,8 @@
                 <div class="space-y-1">
                     <label class="text-[10px] font-bold uppercase tracking-wider text-stone-400">Nível de Permissão</label>
                     <select id="newOperatorPermLevel" class="w-full px-2.5 py-1.5 rounded-md border border-stone-200 dark:border-darkborder bg-white dark:bg-darkbg text-xs focus:outline-none cursor-pointer">
-                        <option value="SDR" selected>💼 SDR / Operador (Prospecção, Ligações e Calls)</option>
-                        <option value="ADMIN">👑 Gestor / Administrador (Acesso Total + Limpar Base)</option>
+                        <option value="SDR" selected>SDR / Operador (Prospecção, Ligações e Calls)</option>
+                        <option value="ADMIN">Gestor / Administrador (Acesso Total + Limpar Base)</option>
                     </select>
                 </div>
                 <button onclick="saveNewOperator()" class="w-full py-2 rounded-lg text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white transition mt-1 shadow-xs">

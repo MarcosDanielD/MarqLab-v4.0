@@ -306,11 +306,11 @@ function updateActiveOperatorUi(name) {
     const permBadge = document.getElementById('headerOperatorPermBadge');
     if (permBadge) {
         if (permLevel === 'ADMIN') {
-            permBadge.innerText = '👑 Gestor';
-            permBadge.className = 'ml-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 uppercase';
+            permBadge.innerText = 'Gestor';
+            permBadge.className = 'ml-0.5 px-1 py-0.5 rounded text-[9px] font-bold bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 border border-stone-900 dark:border-stone-100 uppercase';
         } else {
-            permBadge.innerText = '💼 SDR';
-            permBadge.className = 'ml-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase';
+            permBadge.innerText = 'SDR';
+            permBadge.className = 'ml-0.5 px-1 py-0.5 rounded text-[9px] font-bold bg-stone-200 dark:bg-darkcard2 text-stone-700 dark:text-stone-300 border border-stone-300 dark:border-darkborder uppercase';
         }
     }
 }
@@ -345,13 +345,13 @@ function renderOperatorsModalList() {
         const isCurrent = op.name === appState.activeOperator;
         const isAdmin = (op.permission_level || 'SDR') === 'ADMIN';
         const badgeRole = isAdmin
-            ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">👑 Gestor (Admin)</span>`
-            : `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">💼 SDR (Vendas)</span>`;
+            ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900">Gestor (Admin)</span>`
+            : `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-stone-200 dark:bg-darkcard2 text-stone-700 dark:text-stone-300 border border-stone-300 dark:border-darkborder">SDR (Vendas)</span>`;
 
         return `
             <div class="p-2.5 rounded-xl border border-slate-100 dark:border-darkborder bg-white dark:bg-darkcard flex items-center justify-between text-xs">
                 <div class="flex items-center gap-2">
-                    <div class="w-7 h-7 rounded-lg ${isAdmin ? 'bg-indigo-500/10 text-indigo-500' : 'bg-brand-500/10 text-brand-500'} font-bold flex items-center justify-center text-xs">
+                    <div class="w-7 h-7 rounded-md ${isAdmin ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900' : 'bg-stone-200 text-stone-700 dark:bg-darkcard2 dark:text-stone-300'} font-bold flex items-center justify-center text-xs">
                         ${op.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -1615,7 +1615,7 @@ async function openScreenshotModal(leadId, refresh = false) {
     if (container) {
         container.innerHTML = `
             <div class="py-16 text-center text-slate-400 space-y-3">
-                <div class="inline-block w-8 h-8 border-3 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                <div class="inline-block w-8 h-8 border-2 border-stone-800 dark:border-stone-200 border-t-transparent rounded-full animate-spin"></div>
                 <p class="text-xs font-semibold text-slate-200">Capturando snapshot em alta resolução...</p>
                 <p class="text-[10px] text-slate-400">Playwright Chromium renderizando a visualização em tempo real.</p>
             </div>
