@@ -15,7 +15,7 @@
 
 // Global Application State
 let appState = {
-    theme: localStorage.getItem('marq_theme') || 'dark',
+    theme: localStorage.getItem('marq_theme') || 'light',
     companyWidthMode: localStorage.getItem('marq_company_width') || 'normal',
     sidebarCollapsed: localStorage.getItem('marq_sidebar_collapsed') === 'true',
     activeOperator: localStorage.getItem('marq_active_operator') || 'Jamilly',
@@ -109,9 +109,9 @@ function updateCompanyWidthButtons() {
         const btn = document.getElementById(`btnWidth${m.charAt(0).toUpperCase() + m.slice(1)}`);
         if (btn) {
             if (m === appState.companyWidthMode) {
-                btn.className = 'px-2.5 py-1 rounded-lg text-[11px] font-bold border border-brand-500 bg-brand-500/10 text-brand-600 dark:text-brand-400 shadow-sm';
+                btn.className = 'px-2 py-0.5 rounded text-[10px] font-bold border border-stone-900 bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 shadow-sm';
             } else {
-                btn.className = 'px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-300 hover:border-brand-500 transition shadow-sm';
+                btn.className = 'px-2 py-0.5 rounded text-[10px] font-medium border border-stone-200 dark:border-darkborder bg-white dark:bg-darkcard text-stone-600 dark:text-stone-300 hover:border-stone-400 transition';
             }
         }
     });
@@ -452,8 +452,8 @@ async function loadTodaysMeetings() {
 // ----------------------------------------------------
 function initCharts() {
     const isDark = document.documentElement.classList.contains('dark');
-    const textColor = isDark ? '#94a3b8' : '#64748b';
-    const gridColor = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)';
+    const textColor = isDark ? '#A8A29A' : '#78716C';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)';
 
     // Chart 1: Donut Status
     const canvasDonut = document.getElementById('chartStatusDonut');
@@ -465,9 +465,9 @@ function initCharts() {
                 labels: ['Sem Site', 'Requer Modernização', 'Site Ativo'],
                 datasets: [{
                     data: [0, 0, 0],
-                    backgroundColor: ['#f43f5e', '#f59e0b', '#10b981'],
+                    backgroundColor: ['#C2410C', '#D97706', '#15803D'],
                     borderWidth: 0,
-                    hoverOffset: 4
+                    hoverOffset: 3
                 }]
             },
             options: {
@@ -506,14 +506,14 @@ function initCharts() {
                     label: 'Leads no Funil',
                     data: [0, 0, 0, 0, 0],
                     backgroundColor: [
-                        '#6366f1',
-                        '#f59e0b',
-                        '#3b82f6',
-                        '#8b5cf6',
-                        '#10b981'
+                        '#1C1917',
+                        '#57534E',
+                        '#78716C',
+                        '#D97706',
+                        '#15803D'
                     ],
-                    borderRadius: 8,
-                    barPercentage: 0.65,
+                    borderRadius: 6,
+                    barPercentage: 0.6,
                 }]
             },
             options: {
@@ -532,12 +532,12 @@ function initCharts() {
                 },
                 scales: {
                     x: {
-                        ticks: { color: textColor, precision: 0 },
+                        ticks: { color: textColor, precision: 0, font: { size: 10 } },
                         grid: { color: gridColor },
                         beginAtZero: true
                     },
                     y: {
-                        ticks: { color: textColor, font: { weight: '600' } },
+                        ticks: { color: textColor, font: { weight: '600', size: 10.5 } },
                         grid: { display: false }
                     }
                 }
@@ -549,8 +549,8 @@ function initCharts() {
 function updateChartsTheme() {
     if (!appState.statusChart || !appState.funnelChart) return;
     const isDark = document.documentElement.classList.contains('dark');
-    const textColor = isDark ? '#94a3b8' : '#64748b';
-    const gridColor = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)';
+    const textColor = isDark ? '#A8A29A' : '#78716C';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)';
 
     if (appState.funnelChart.options.scales.x) {
         appState.funnelChart.options.scales.x.ticks.color = textColor;
@@ -884,45 +884,45 @@ function renderLeadsTable(leads) {
             priorityLabel = 'Alta Prioridade';
         } else if (lead.lead_score >= 60) {
             scoreClass = 'badge-score-med';
-            priorityLabel = 'Média Prioridade';
+            priorityLabel = 'Média';
         }
 
-        // Qualification Badge
+        // Qualification Badge - Warm Minimalist
         let qualBadge = '';
         if (lead.qualification_status.includes('Sem Site')) {
-            qualBadge = `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">Sem Site</span>`;
+            qualBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#FFF7ED] text-[#9A3412] border border-[#FFEDD5]">Sem Site</span>`;
         } else if (lead.qualification_status.includes('Modernização')) {
-            qualBadge = `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">Requer Redesign</span>`;
+            qualBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#FEFCE8] text-[#854D0E] border border-[#FEF08A]">Requer Redesign</span>`;
         } else {
-            qualBadge = `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">Site Ativo</span>`;
+            qualBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#F0FDF4] text-[#166534] border border-[#DCFCE7]">Site Ativo</span>`;
         }
 
-        // Phone Type Badge (WhatsApp vs Linha Fixa)
+        // Phone Type Badge
         let phoneTypeBadge = '';
         const pType = lead.phone_type || 'whatsapp';
         if (pType === 'whatsapp') {
             phoneTypeBadge = `
-                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    <i class="ph-bold ph-whatsapp-logo text-[10px]"></i> Celular / Whats
+                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-medium bg-[#F0FDF4] text-[#166534] border border-[#DCFCE7]">
+                    <i class="ph-bold ph-whatsapp-logo text-[10px]"></i> Whats
                 </span>
             `;
         } else if (pType === 'landline') {
             phoneTypeBadge = `
-                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-100 dark:bg-darkborder text-slate-500 dark:text-slate-400">
-                    <i class="ph-bold ph-phone text-[10px]"></i> Linha Fixa
+                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-medium bg-stone-100 dark:bg-darkborder text-stone-500 dark:text-stone-400">
+                    <i class="ph-bold ph-phone text-[10px]"></i> Fixo
                 </span>
             `;
         }
 
-        // Scheduled Meeting Badge with quick remove button
+        // Scheduled Meeting Badge
         let scheduleBadge = '';
         if (lead.scheduled_at) {
             scheduleBadge = `
-                <div class="mt-1 inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20" title="${escapeHtml(lead.meeting_notes || '')}">
-                    <i class="ph-bold ph-calendar"></i>
+                <div class="mt-1 inline-flex items-center gap-1.5 text-[10px] font-semibold text-stone-900 dark:text-white bg-stone-100 dark:bg-darkborder px-1.5 py-0.5 rounded border border-stone-200 dark:border-darkborder" title="${escapeHtml(lead.meeting_notes || '')}">
+                    <i class="ph-bold ph-calendar text-[11px]"></i>
                     <span>${escapeHtml(lead.scheduled_at)}</span>
-                    <button onclick="unscheduleMeeting(${lead.id})" class="text-rose-500 hover:text-rose-700 ml-0.5" title="Remover da Agenda">
-                        <i class="ph-bold ph-x text-[12px]"></i>
+                    <button onclick="unscheduleMeeting(${lead.id})" class="text-stone-400 hover:text-rose-600 ml-0.5" title="Remover da Agenda">
+                        <i class="ph-bold ph-x text-[10px]"></i>
                     </button>
                 </div>
             `;
@@ -931,17 +931,17 @@ function renderLeadsTable(leads) {
         // Notes count badge
         const notesCount = (lead.notes && Array.isArray(lead.notes)) ? lead.notes.length : (lead.notes_count || 0);
         const notesBadge = notesCount > 0 ? `
-            <span class="ml-1 px-1.5 py-0.2 rounded-full text-[9px] font-extrabold bg-amber-500 text-white">${notesCount}</span>
+            <span class="ml-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900">${notesCount}</span>
         ` : '';
 
         // WhatsApp direct link button
         const whatsappBtn = lead.whatsapp_url ? `
-            <a href="${lead.whatsapp_url}" target="_blank" class="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition shadow-sm" title="Abrir conversa no WhatsApp">
-                <i class="ph-bold ph-whatsapp-logo text-sm"></i>
+            <a href="${lead.whatsapp_url}" target="_blank" class="p-1.5 rounded-lg bg-[#15803D] text-white hover:bg-[#166534] transition shadow-sm" title="Abrir conversa no WhatsApp">
+                <i class="ph-bold ph-whatsapp-logo text-xs"></i>
             </a>
         ` : `
-            <button disabled class="p-2 rounded-lg opacity-30 cursor-not-allowed bg-slate-200 dark:bg-darkcard text-slate-400">
-                <i class="ph-bold ph-whatsapp-logo text-sm"></i>
+            <button disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed bg-stone-100 dark:bg-darkcard text-stone-400">
+                <i class="ph-bold ph-whatsapp-logo text-xs"></i>
             </button>
         `;
 
@@ -955,87 +955,87 @@ function renderLeadsTable(leads) {
         `;
 
         return `
-            <tr class="border-b border-slate-100 dark:border-darkborder/50 hover:bg-slate-50/50 dark:hover:bg-darkcard2/30 transition-colors">
+            <tr class="border-b border-stone-200/60 dark:border-darkborder/50 hover:bg-[#F5F3EF]/60 dark:hover:bg-darkcard2/40 transition-colors">
                 <!-- 1. Score -->
-                <td class="py-3 px-4 whitespace-nowrap">
+                <td class="py-2.5 px-3 whitespace-nowrap">
                     <div class="flex flex-col gap-0.5">
-                        <span class="px-2 py-0.5 rounded-md text-xs font-bold w-max ${scoreClass}">
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold font-mono w-max ${scoreClass}">
                             ${lead.lead_score} pts
                         </span>
-                        <span class="text-[10px] text-slate-400 font-medium">${priorityLabel}</span>
+                        <span class="text-[9px] text-stone-400 font-medium">${priorityLabel}</span>
                     </div>
                 </td>
 
                 <!-- 2. Empresa & Local + Distância da Casa -->
-                <td class="py-3 px-4 company-col-cell" style="${getCompanyColWidthStyle()}">
-                    <div class="font-bold text-slate-900 dark:text-white leading-normal break-words text-[13px] whitespace-normal">
+                <td class="py-2.5 px-3 company-col-cell" style="${getCompanyColWidthStyle()}">
+                    <div class="font-bold text-stone-900 dark:text-white leading-tight break-words text-xs whitespace-normal">
                         ${escapeHtml(lead.name)}
                     </div>
-                    <div class="text-[11px] text-slate-400 break-words flex items-start gap-1 mt-1 leading-snug whitespace-normal">
-                        <i class="ph ph-map-pin text-[12px] shrink-0 mt-0.5 text-slate-400"></i>
+                    <div class="text-[10px] text-stone-500 dark:text-stone-400 break-words flex items-start gap-1 mt-0.5 leading-snug whitespace-normal">
+                        <i class="ph ph-map-pin text-[11px] shrink-0 mt-0.5 text-stone-400"></i>
                         <span>${escapeHtml(lead.address || 'Brasil')}</span>
                     </div>
                     ${lead.distance_km != null ? `
-                        <div class="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-brand-600 dark:text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded-md border border-brand-500/20" title="Distância estimada da sua residência (R. Lótus, 450 - Araucária/PR)">
-                            <i class="ph-bold ph-navigation-arrow text-[10px]"></i>
-                            <span>${lead.distance_km.toFixed(1)} km da sua casa</span>
+                        <div class="mt-1 inline-flex items-center gap-1 text-[9.5px] font-medium text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-stone-800/80 px-1.5 py-0.2 rounded border border-stone-200 dark:border-stone-700" title="Distância estimada da sua residência (R. Lótus, 450 - Araucária/PR)">
+                            <i class="ph-bold ph-navigation-arrow text-[9px]"></i>
+                            <span>${lead.distance_km.toFixed(1)} km de você</span>
                         </div>
                     ` : ''}
                 </td>
 
                 <!-- 3. Contato + Phone Type Badge -->
-                <td class="py-3 px-4 whitespace-nowrap font-mono text-xs">
-                    <div class="space-y-1">
-                        <div class="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-medium">
-                            <i class="ph ph-phone text-slate-400"></i>
-                            <span>${lead.phone || '<span class="text-slate-400 font-sans">Sem telefone</span>'}</span>
+                <td class="py-2.5 px-3 whitespace-nowrap font-mono text-[11px]">
+                    <div class="space-y-0.5">
+                        <div class="flex items-center gap-1 text-stone-700 dark:text-stone-200 font-medium">
+                            <i class="ph ph-phone text-stone-400 text-xs"></i>
+                            <span>${lead.phone || '<span class="text-stone-400 font-sans text-[10px]">Sem telefone</span>'}</span>
                         </div>
                         <div>${phoneTypeBadge}</div>
                     </div>
                 </td>
 
                 <!-- 4. Google Maps Stats -->
-                <td class="py-3 px-4 whitespace-nowrap">
-                    <div class="flex items-center gap-1 text-slate-800 dark:text-slate-200 font-bold">
-                        <i class="ph-fill ph-star text-amber-400 text-xs"></i>
+                <td class="py-2.5 px-3 whitespace-nowrap">
+                    <div class="flex items-center gap-1 text-stone-800 dark:text-stone-200 font-bold text-xs">
+                        <i class="ph-fill ph-star text-amber-500 text-xs"></i>
                         <span>${lead.rating ? lead.rating.toFixed(1) : '0.0'}</span>
-                        <span class="text-slate-400 text-[11px] font-normal">(${lead.reviews_count || 0})</span>
+                        <span class="text-stone-400 text-[10px] font-normal">(${lead.reviews_count || 0})</span>
                     </div>
                 </td>
 
                 <!-- 5. Diagnóstico Web & Print Proof -->
-                <td class="py-3 px-4 min-w-[180px] max-w-[260px]">
+                <td class="py-2.5 px-3 min-w-[170px] max-w-[240px]">
                     <div class="space-y-1">
-                        <div class="flex items-center gap-1.5 flex-wrap">
+                        <div class="flex items-center gap-1 flex-wrap">
                             ${qualBadge}
                             ${lead.website ? `
-                                <button onclick="openScreenshotModal(${lead.id})" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 hover:bg-purple-600 hover:text-white transition shadow-sm cursor-pointer" title="Ver print do site capturado">
-                                    <i class="ph-bold ph-camera"></i>
-                                    <span>📸 Ver Print</span>
+                                <button onclick="openScreenshotModal(${lead.id})" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-stone-100 hover:bg-stone-900 hover:text-white dark:bg-darkborder dark:hover:bg-white dark:hover:text-stone-900 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-darkborder transition cursor-pointer" title="Ver print do site capturado">
+                                    <i class="ph-bold ph-camera text-[10px]"></i>
+                                    <span>Print</span>
                                 </button>
                             ` : `
-                                <button onclick="openScreenshotModal(${lead.id})" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-600 hover:text-white transition shadow-sm cursor-pointer" title="Ver diagnóstico visual de ausência de site">
-                                    <i class="ph-bold ph-camera-slash"></i>
-                                    <span>📸 Sem Site</span>
+                                <button onclick="openScreenshotModal(${lead.id})" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#FFF7ED] hover:bg-stone-900 hover:text-white text-[#9A3412] border border-[#FFEDD5] transition cursor-pointer" title="Ver diagnóstico visual de ausência de site">
+                                    <i class="ph-bold ph-camera-slash text-[10px]"></i>
+                                    <span>Sem Site</span>
                                 </button>
                             `}
                         </div>
-                        <div class="text-[10px] text-slate-400 break-words leading-tight" title="${escapeHtml(lead.qualification_detail || '')}">
+                        <div class="text-[9.5px] text-stone-400 break-words leading-tight" title="${escapeHtml(lead.qualification_detail || '')}">
                             ${escapeHtml(lead.qualification_detail || 'Sem site')}
                         </div>
                     </div>
                 </td>
 
                 <!-- 6. SDR Responsável -->
-                <td class="py-3 px-4 whitespace-nowrap">
-                    <select onchange="changeLeadOperator(${lead.id}, this.value)" class="px-2 py-1 rounded-lg text-[11px] font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer">
+                <td class="py-2.5 px-3 whitespace-nowrap">
+                    <select onchange="changeLeadOperator(${lead.id}, this.value)" class="px-2 py-1 rounded-md text-[11px] font-medium border border-stone-200 dark:border-darkborder bg-white dark:bg-darkcard text-stone-700 dark:text-stone-200 focus:outline-none focus:border-stone-500 cursor-pointer">
                         ${operatorOptions}
                     </select>
                 </td>
 
                 <!-- 7. Status & Agenda -->
-                <td class="py-3 px-4 whitespace-nowrap">
-                    <select onchange="changeLeadCrmStatus(${lead.id}, this.value)" class="px-2 py-1 rounded-lg text-[11px] font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer">
+                <td class="py-2.5 px-3 whitespace-nowrap">
+                    <select onchange="changeLeadCrmStatus(${lead.id}, this.value)" class="px-2 py-1 rounded-md text-[11px] font-medium border border-stone-200 dark:border-darkborder bg-white dark:bg-darkcard text-stone-700 dark:text-stone-200 focus:outline-none focus:border-stone-500 cursor-pointer">
                         <option value="Novo" ${lead.crm_status === 'Novo' ? 'selected' : ''}>Novo</option>
                         <option value="Contatado" ${lead.crm_status === 'Contatado' ? 'selected' : ''}>Contatado</option>
                         <option value="Reunião Agendada" ${lead.crm_status === 'Reunião Agendada' ? 'selected' : ''}>Reunião Agendada</option>
@@ -1047,29 +1047,29 @@ function renderLeadsTable(leads) {
                 </td>
 
                 <!-- 8. Ações Comerciais -->
-                <td class="py-3 px-4 whitespace-nowrap text-center">
+                <td class="py-2.5 px-3 whitespace-nowrap text-center">
                     <div class="flex items-center justify-center gap-1">
                         <!-- Script Button -->
-                        <button onclick="openScriptModal(${lead.id})" class="px-2 py-1.5 rounded-lg text-xs font-semibold bg-brand-500/10 text-brand-600 dark:text-brand-400 hover:bg-brand-500 hover:text-white transition shadow-sm flex items-center gap-1" title="Ver roteiro comercial">
-                            <i class="ph-bold ph-phone-call"></i>
+                        <button onclick="openScriptModal(${lead.id})" class="px-2 py-1 rounded-md text-[11px] font-semibold bg-stone-100 dark:bg-darkborder text-stone-700 dark:text-stone-200 hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 transition border border-stone-200 dark:border-darkborder flex items-center gap-1" title="Ver roteiro comercial">
+                            <i class="ph-bold ph-phone-call text-xs"></i>
                             <span>Script</span>
                         </button>
 
                         <!-- Notes Button -->
-                        <button onclick="openNotesModal(${lead.id}, '${escapeHtml(lead.name)}')" class="px-2 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500 hover:text-white transition shadow-sm flex items-center gap-0.5" title="Anotações e Histórico de Ligações">
-                            <i class="ph-bold ph-note-pencil"></i>
+                        <button onclick="openNotesModal(${lead.id}, '${escapeHtml(lead.name)}')" class="px-2 py-1 rounded-md text-[11px] font-semibold bg-stone-100 dark:bg-darkborder text-stone-700 dark:text-stone-200 hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 transition border border-stone-200 dark:border-darkborder flex items-center gap-0.5" title="Anotações e Histórico de Ligações">
+                            <i class="ph-bold ph-note-pencil text-xs"></i>
                             <span>Notas</span>
                             ${notesBadge}
                         </button>
 
                         <!-- Proposal PDF Button -->
-                        <button onclick="openProposalModal(${lead.id})" class="p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 hover:bg-indigo-600 hover:text-white transition shadow-sm" title="Gerar Proposta Comercial PDF">
-                            <i class="ph-bold ph-file-pdf text-sm"></i>
+                        <button onclick="openProposalModal(${lead.id})" class="p-1.5 rounded-md text-stone-600 dark:text-stone-300 hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 border border-stone-200 dark:border-darkborder transition" title="Gerar Proposta Comercial PDF">
+                            <i class="ph-bold ph-file-pdf text-xs"></i>
                         </button>
 
                         <!-- Schedule Call Button -->
-                        <button onclick="openScheduleModal(${lead.id}, '${escapeHtml(lead.name)}')" class="p-1.5 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-600 hover:text-white transition shadow-sm" title="Agendar Reunião ou Call com o lead">
-                            <i class="ph-bold ph-calendar-plus text-sm"></i>
+                        <button onclick="openScheduleModal(${lead.id}, '${escapeHtml(lead.name)}')" class="p-1.5 rounded-md text-stone-600 dark:text-stone-300 hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 border border-stone-200 dark:border-darkborder transition" title="Agendar Reunião ou Call com o lead">
+                            <i class="ph-bold ph-calendar-plus text-xs"></i>
                         </button>
 
                         <!-- WhatsApp Button -->
@@ -1117,32 +1117,32 @@ async function loadAgendaMeetings() {
 
         container.innerHTML = meetings.map(m => {
             return `
-                <div class="glass-panel p-5 rounded-2xl space-y-3 relative overflow-hidden border-l-4 border-l-indigo-500">
+                <div class="glass-panel p-4 rounded-xl space-y-2.5 relative overflow-hidden border-l-4 border-l-stone-800 dark:border-l-stone-200">
                     <div class="flex items-start justify-between">
                         <div>
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded">
+                            <span class="text-[9px] font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-darkborder px-1.5 py-0.5 rounded">
                                 Reunião Marcada
                             </span>
-                            <h4 class="font-bold text-sm text-slate-900 dark:text-white mt-1.5 break-words">${escapeHtml(m.name)}</h4>
-                            <p class="text-xs text-slate-400 font-mono">${m.phone || 'Sem telefone'}</p>
-                            <span class="text-[10px] text-slate-400 block mt-0.5">SDR: <strong>${escapeHtml(m.assigned_to || 'Jamilly')}</strong></span>
+                            <h4 class="font-bold text-xs text-stone-900 dark:text-white mt-1 break-words">${escapeHtml(m.name)}</h4>
+                            <p class="text-[11px] text-stone-400 font-mono">${m.phone || 'Sem telefone'}</p>
+                            <span class="text-[9.5px] text-stone-400 block mt-0.5">SDR: <strong>${escapeHtml(m.assigned_to || 'Jamilly')}</strong></span>
                         </div>
                         <div class="text-right">
-                            <span class="text-xs font-extrabold text-indigo-600 dark:text-indigo-400 block">${escapeHtml(m.scheduled_at)}</span>
-                            <span class="text-[10px] text-slate-400 break-words">${escapeHtml(m.address || 'Brasil')}</span>
+                            <span class="text-[11px] font-bold text-stone-900 dark:text-white block font-mono">${escapeHtml(m.scheduled_at)}</span>
+                            <span class="text-[9.5px] text-stone-400 break-words">${escapeHtml(m.address || 'Brasil')}</span>
                         </div>
                     </div>
 
                     ${m.meeting_notes ? `
-                        <div class="text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-darkbg text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-darkborder/40">
+                        <div class="text-[11px] p-2 rounded-lg bg-stone-50 dark:bg-darkcard text-stone-600 dark:text-stone-300 border border-stone-100 dark:border-darkborder/50">
                             <strong>Pauta:</strong> ${escapeHtml(m.meeting_notes)}
                         </div>
                     ` : ''}
 
-                    <div class="pt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 dark:border-darkborder">
+                    <div class="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-stone-100 dark:border-darkborder/50">
                         <!-- Status Changer -->
-                        <div class="flex items-center gap-1.5">
-                            <select onchange="handleAgendaStatusChange(${m.id}, this.value)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard text-slate-700 dark:text-slate-200 cursor-pointer">
+                        <div class="flex items-center gap-1">
+                            <select onchange="handleAgendaStatusChange(${m.id}, this.value)" class="px-2 py-1 rounded-md text-[10.5px] font-medium border border-stone-200 dark:border-darkborder bg-white dark:bg-darkcard text-stone-700 dark:text-stone-200 cursor-pointer">
                                 <option value="Reunião Agendada" selected>Status: Agendada</option>
                                 <option value="Fechado (R$ 1.000)">Fechado (R$ 1.000)</option>
                                 <option value="Em Negociação">Em Negociação</option>
@@ -1151,23 +1151,23 @@ async function loadAgendaMeetings() {
                             </select>
                         </div>
 
-                        <div class="flex items-center gap-1.5">
+                        <div class="flex items-center gap-1">
                             <!-- Button: Notes -->
-                            <button onclick="openNotesModal(${m.id}, '${escapeHtml(m.name)}')" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-600 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 flex items-center gap-1 transition" title="Anotações da Call">
+                            <button onclick="openNotesModal(${m.id}, '${escapeHtml(m.name)}')" class="px-2 py-1 rounded-md text-[10.5px] font-medium text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-darkborder hover:bg-stone-200 transition" title="Anotações da Call">
                                 <i class="ph-bold ph-note-pencil"></i>
                                 <span>Notas</span>
                             </button>
 
                             <!-- Button: Remove / Unschedule Meeting -->
-                            <button onclick="unscheduleMeeting(${m.id})" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 flex items-center gap-1 transition" title="Remover da Agenda">
-                                <i class="ph-bold ph-calendar-x text-sm"></i>
+                            <button onclick="unscheduleMeeting(${m.id})" class="px-2 py-1 rounded-md text-[10.5px] font-medium text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition" title="Remover da Agenda">
+                                <i class="ph-bold ph-calendar-x"></i>
                                 <span>Remover</span>
                             </button>
                             
                             <!-- Button: WhatsApp Direct -->
                             ${m.whatsapp_url ? `
-                                <a href="${m.whatsapp_url}" target="_blank" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500 flex items-center gap-1 transition shadow-sm">
-                                    <i class="ph-bold ph-whatsapp-logo text-sm"></i>
+                                <a href="${m.whatsapp_url}" target="_blank" class="px-2.5 py-1 rounded-md text-[10.5px] font-bold bg-[#15803D] text-white hover:bg-[#166534] flex items-center gap-1 transition shadow-sm">
+                                    <i class="ph-bold ph-whatsapp-logo"></i>
                                     <span>WhatsApp</span>
                                 </a>
                             ` : ''}
