@@ -18,6 +18,7 @@ let appState = {
     theme: localStorage.getItem('marq_theme') || 'light',
     companyWidthMode: localStorage.getItem('marq_company_width') || 'normal',
     sidebarCollapsed: localStorage.getItem('marq_sidebar_collapsed') === 'true',
+    currentUser: null,
     activeOperator: localStorage.getItem('marq_active_operator') || 'Jamilly',
     currentView: 'mineracao',
     isRunning: false,
@@ -33,16 +34,104 @@ let appState = {
 };
 
 // DOM Ready initialization
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
     initSidebarState();
     initCompanyWidth();
     setupEventListeners();
+    const isAuthed = await checkAuth();
+    if (!isAuthed) return;
     loadOperators();
     loadDashboardData();
     loadTodaysMeetings();
     connectSSE();
+    startPresenceHeartbeat();
 });
+
+// ----------------------------------------------------
+// 0. AUTHENTICATION & MULTI-USER SESSION CONTROLLER
+// ----------------------------------------------------
+async function checkAuth() {
+    try {
+        const res = await fetch('/api/auth/me');
+        if (res.status === 401) {
+            window.location.href = '/login';
+            return false;
+        }
+        const data = await res.json();
+        if (data.success && data.user) {
+            appState.currentUser = data.user;
+            appState.activeOperator = data.user.name;
+            updateUserSessionUi(data.user);
+            return true;
+        } else {
+            window.location.href = '/login';
+            return false;
+        }
+    } catch (e) {
+        console.error('Erro verificando autenticação:', e);
+        return false;
+    }
+}
+
+async function handleLogout() {
+    try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.href = '/login';
+    } catch (e) {
+        window.location.href = '/login';
+    }
+}
+
+function updateUserSessionUi(user) {
+    if (!user) return;
+    const name = user.name || 'Operador';
+    const initial = name.charAt(0).toUpperCase();
+    const role = user.role || (user.permission_level === 'ADMIN' ? 'Gestor' : 'SDR');
+    const isAdmin = (user.permission_level === 'ADMIN');
+
+    // Sidebar
+    const sideAvatar = document.getElementById('sidebarOperatorAvatar');
+    if (sideAvatar) sideAvatar.innerText = initial;
+
+    const sideName = document.getElementById('sidebarOperatorName');
+    if (sideName) sideName.innerText = name;
+
+    const sideRole = document.getElementById('sidebarOperatorRole');
+    if (sideRole) sideRole.innerText = role;
+
+    const sideBadge = document.getElementById('sidebarOperatorRoleBadge');
+    if (sideBadge) {
+        sideBadge.innerText = isAdmin ? 'Admin' : 'SDR';
+        sideBadge.className = isAdmin
+            ? 'px-1 py-0.2 rounded text-[8px] font-bold uppercase tracking-wider bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900'
+            : 'px-1 py-0.2 rounded text-[8px] font-bold uppercase tracking-wider bg-stone-200 dark:bg-darkborder text-stone-700 dark:text-stone-300';
+    }
+
+    // Top Header
+    const headerName = document.getElementById('headerOperatorName');
+    if (headerName) headerName.innerText = name;
+
+    const headerBadge = document.getElementById('headerOperatorPermBadge');
+    if (headerBadge) {
+        headerBadge.innerText = isAdmin ? 'Gestor' : 'SDR';
+        headerBadge.className = isAdmin
+            ? 'ml-0.5 px-1 py-0.2 rounded text-[9px] font-bold bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 border border-stone-900 dark:border-stone-100 uppercase'
+            : 'ml-0.5 px-1 py-0.2 rounded text-[9px] font-bold bg-stone-200 dark:bg-darkcard2 text-stone-700 dark:text-stone-300 border border-stone-300 dark:border-darkborder uppercase';
+    }
+}
+
+let presenceInterval = null;
+function startPresenceHeartbeat() {
+    if (presenceInterval) clearInterval(presenceInterval);
+    const ping = async () => {
+        try {
+            await fetch('/api/presence/ping', { method: 'POST' });
+        } catch (e) { }
+    };
+    ping();
+    presenceInterval = setInterval(ping, 25000);
+}
 
 // ----------------------------------------------------
 // 1. SIDEBAR COLLAPSIBLE CONTROLLER (MENU ESQUERDO)
@@ -337,38 +426,45 @@ function renderOperatorsModalList() {
     if (!container) return;
 
     if (!appState.operators || appState.operators.length === 0) {
-        container.innerHTML = `<div class="text-xs text-slate-400 p-2 text-center">Nenhum operador cadastrado.</div>`;
+        container.innerHTML = `<div class="text-xs text-stone-400 p-2 text-center">Nenhum operador cadastrado.</div>`;
         return;
     }
 
+    const currentUserName = appState.currentUser ? appState.currentUser.name : '';
+    const isCurrentUserAdmin = appState.currentUser && appState.currentUser.permission_level === 'ADMIN';
+
     container.innerHTML = appState.operators.map(op => {
-        const isCurrent = op.name === appState.activeOperator;
+        const isCurrent = op.name === currentUserName;
         const isAdmin = (op.permission_level || 'SDR') === 'ADMIN';
         const badgeRole = isAdmin
-            ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900">Gestor (Admin)</span>`
-            : `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-stone-200 dark:bg-darkcard2 text-stone-700 dark:text-stone-300 border border-stone-300 dark:border-darkborder">SDR (Vendas)</span>`;
+            ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900">Gestor</span>`
+            : `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-stone-200 dark:bg-darkcard2 text-stone-700 dark:text-stone-300 border border-stone-300 dark:border-darkborder">SDR</span>`;
 
         return `
-            <div class="p-2.5 rounded-xl border border-slate-100 dark:border-darkborder bg-white dark:bg-darkcard flex items-center justify-between text-xs">
-                <div class="flex items-center gap-2">
-                    <div class="w-7 h-7 rounded-md ${isAdmin ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900' : 'bg-stone-200 text-stone-700 dark:bg-darkcard2 dark:text-stone-300'} font-bold flex items-center justify-center text-xs">
+            <div class="p-2.5 rounded-xl border border-stone-200 dark:border-darkborder bg-white dark:bg-darkcard flex items-center justify-between text-xs gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <div class="w-7 h-7 rounded-md ${isAdmin ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900' : 'bg-stone-200 text-stone-700 dark:bg-darkcard2 dark:text-stone-300'} font-bold flex items-center justify-center text-xs shrink-0">
                         ${op.name.charAt(0).toUpperCase()}
                     </div>
-                    <div>
-                        <div class="flex items-center gap-1.5">
-                            <strong class="text-slate-900 dark:text-white">${escapeHtml(op.name)}</strong>
+                    <div class="min-w-0 truncate">
+                        <div class="flex items-center gap-1.5 truncate">
+                            <strong class="text-stone-900 dark:text-white truncate">${escapeHtml(op.name)}</strong>
                             ${badgeRole}
                         </div>
-                        <span class="text-[10px] text-slate-400">${escapeHtml(op.role)}</span>
+                        <div class="text-[10px] text-stone-400 truncate flex items-center gap-1">
+                            <span>${escapeHtml(op.email || 'Sem e-mail cadastrado')}</span>
+                        </div>
                     </div>
                 </div>
-                ${isCurrent ? `
-                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-200 dark:bg-darkborder text-slate-700 dark:text-slate-300">Ativo</span>
-                ` : `
-                    <button onclick="changeActiveOperator('${escapeHtml(op.name)}'); closeTeamModal();" class="text-xs text-brand-500 hover:text-brand-600 font-semibold">
-                        Selecionar
-                    </button>
-                `}
+                <div class="flex items-center gap-1.5 shrink-0">
+                    ${isCurrent ? `
+                        <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/40">Você</span>
+                    ` : (isCurrentUserAdmin ? `
+                        <button onclick="deactivateOperator(${op.id}, '${escapeHtml(op.name)}')" class="px-2 py-0.5 rounded text-[10px] font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition border border-rose-200 dark:border-rose-900/40" title="Desativar membro da equipe">
+                            Desativar
+                        </button>
+                    ` : '')}
+                </div>
             </div>
         `;
     }).join('');
@@ -377,9 +473,14 @@ function renderOperatorsModalList() {
 async function saveNewOperator() {
     const nameInput = document.getElementById('newOperatorName');
     const roleInput = document.getElementById('newOperatorRole');
+    const emailInput = document.getElementById('newOperatorEmail');
+    const pwdInput = document.getElementById('newOperatorPassword');
     const permSelect = document.getElementById('newOperatorPermLevel');
-    const name = nameInput.value.trim();
-    const role = roleInput.value.trim() || 'SDR / Vendas';
+
+    const name = nameInput ? nameInput.value.trim() : '';
+    const role = roleInput ? roleInput.value.trim() || 'SDR / Vendas' : 'SDR / Vendas';
+    const email = emailInput ? emailInput.value.trim() : '';
+    const password = pwdInput ? pwdInput.value.trim() : '';
     const permission_level = permSelect ? permSelect.value : 'SDR';
 
     if (!name) {
@@ -391,18 +492,52 @@ async function saveNewOperator() {
         const res = await fetch('/api/operators', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, role, permission_level })
+            body: JSON.stringify({ name, role, email, password, permission_level })
         });
         const data = await res.json();
         if (data.success) {
             showToast(`Operador ${name} (${permission_level}) cadastrado com sucesso!`, 'success');
-            nameInput.value = '';
+            if (nameInput) nameInput.value = '';
+            if (emailInput) emailInput.value = '';
+            if (pwdInput) pwdInput.value = '';
             await loadOperators();
         } else {
             showToast(data.error || 'Erro ao cadastrar operador.', 'error');
         }
     } catch (err) {
         showToast('Erro de comunicação: ' + err.message, 'error');
+    }
+}
+
+async function deactivateOperator(opId, opName) {
+    if (!confirm(`Deseja realmente desativar o acesso de ${opName}?`)) return;
+    try {
+        const res = await fetch(`/api/operator/${opId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`Membro ${opName} desativado.`, 'success');
+            await loadOperators();
+        } else {
+            showToast(data.error || 'Erro ao desativar membro.', 'error');
+        }
+    } catch (err) {
+        showToast('Erro: ' + err.message, 'error');
+    }
+}
+
+async function claimLead(leadId) {
+    try {
+        const res = await fetch(`/api/lead/${leadId}/claim`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Você assumiu este lead com sucesso!', 'success');
+            loadLeadsTable();
+            loadKpis();
+        } else {
+            showToast(data.error || 'Não foi possível assumir este lead.', 'error');
+        }
+    } catch (err) {
+        showToast('Erro ao assumir lead: ' + err.message, 'error');
     }
 }
 
@@ -416,9 +551,13 @@ async function changeLeadOperator(leadId, opName) {
         const data = await res.json();
         if (data.success) {
             showToast(`Lead atribuído a ${opName}!`, 'success');
+        } else {
+            showToast(data.error || 'Erro ao transferir lead.', 'error');
+            loadLeadsTable();
         }
     } catch (err) {
         showToast('Erro ao atribuir operador: ' + err.message, 'error');
+        loadLeadsTable();
     }
 }
 
@@ -587,7 +726,7 @@ function setupEventListeners() {
 
     // Filter inputs with debounce
     let debounceTimer;
-    const filterInputs = ['filterSearch', 'filterStatus', 'filterCrm', 'filterOperator', 'filterPhoneType', 'filterSort'];
+    const filterInputs = ['filterSearch', 'filterStatus', 'filterCrm', 'filterOperator', 'filterPhoneType', 'filterCnpj', 'filterSort'];
     filterInputs.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -729,6 +868,42 @@ function handleSseEvent(data) {
         setUiMiningRunning(false);
         addTerminalLog(`[ERRO] ${data.message}`);
         showToast(`Erro na mineração: ${data.message}`, 'error');
+    } else if (data.type === 'lead_status_changed') {
+        loadKpis();
+        loadLeadsTable();
+        const myName = appState.currentUser ? appState.currentUser.name : '';
+        if (data.operator && data.operator !== myName) {
+            showToast(`[${data.operator}] alterou status do Lead #${data.lead_id} para '${data.new_status}'`, 'info');
+        }
+    } else if (data.type === 'lead_claimed') {
+        loadLeadsTable();
+        loadKpis();
+        const myName = appState.currentUser ? appState.currentUser.name : '';
+        if (data.assigned_to && data.assigned_to !== myName) {
+            showToast(`[${data.assigned_to}] assumiu o lead "${data.lead_name || '#' + data.lead_id}"`, 'info');
+        }
+    } else if (data.type === 'lead_assigned' || data.type === 'leads_bulk_assigned') {
+        loadLeadsTable();
+        loadKpis();
+    } else if (data.type === 'meeting_scheduled' || data.type === 'meeting_unscheduled') {
+        loadAgendaMeetings();
+        loadTodaysMeetings();
+        loadLeadsTable();
+        loadKpis();
+        const myName = appState.currentUser ? appState.currentUser.name : '';
+        if (data.type === 'meeting_scheduled' && data.operator && data.operator !== myName) {
+            showToast(`[${data.operator}] agendou reunião com ${data.lead_name || 'lead'} para ${data.scheduled_at}`, 'info');
+        }
+    } else if (data.type === 'lead_note_added') {
+        if (appState.activeNotesLeadId == data.lead_id) {
+            fetch(`/api/lead/${data.lead_id}/notes`).then(r => r.json()).then(d => {
+                if (d.success) renderNotesList(d.notes || []);
+            });
+        }
+        loadLeadsTable();
+    } else if (data.type === 'database_cleared') {
+        showToast(`Base de leads limpa pelo administrador [${data.operator}].`, 'warning');
+        loadDashboardData();
     }
 }
 
@@ -836,6 +1011,7 @@ async function loadLeadsTable() {
         const crm = document.getElementById('filterCrm') ? document.getElementById('filterCrm').value : 'all';
         const operator = document.getElementById('filterOperator') ? document.getElementById('filterOperator').value : 'all';
         const phoneType = document.getElementById('filterPhoneType') ? document.getElementById('filterPhoneType').value : 'all';
+        const cnpjFilter = document.getElementById('filterCnpj') ? document.getElementById('filterCnpj').value : 'all';
         const sort = document.getElementById('filterSort') ? document.getElementById('filterSort').value : 'score_desc';
 
         const params = new URLSearchParams({
@@ -843,6 +1019,7 @@ async function loadLeadsTable() {
             status: status !== 'all' ? status : (crm !== 'all' ? crm : 'all'),
             operator: operator,
             phone_type: phoneType,
+            cnpj_filter: cnpjFilter,
             sort_by: sort
         });
 
@@ -945,14 +1122,71 @@ function renderLeadsTable(leads) {
             </button>
         `;
 
-        // Operator assignment dropdown
-        const currentAssigned = lead.assigned_to || 'Jamilly';
-        const operatorOptions = appState.operators.length > 0 ? appState.operators.map(op => {
-            return `<option value="${escapeHtml(op.name)}" ${op.name === currentAssigned ? 'selected' : ''}>${escapeHtml(op.name)}</option>`;
-        }).join('') : `
-            <option value="Jamilly" ${currentAssigned === 'Jamilly' ? 'selected' : ''}>Jamilly</option>
-            <option value="Marcos" ${currentAssigned === 'Marcos' ? 'selected' : ''}>Marcos</option>
-        `;
+        // Multi-user ownership & permissions
+        const currentUser = appState.currentUser || {};
+        const currentAssigned = (lead.assigned_to || '').trim();
+        const isUnassigned = !currentAssigned || currentAssigned.toLowerCase() === 'unassigned' || currentAssigned === 'Sem Atribuição';
+        const isOwner = Boolean(currentUser.name && currentAssigned.toLowerCase() === currentUser.name.toLowerCase());
+        const isAdmin = (currentUser.permission_level === 'ADMIN');
+        const canEdit = isOwner || isAdmin || isUnassigned;
+
+        // Operator Column UI
+        let operatorCellHtml = '';
+        if (isUnassigned) {
+            operatorCellHtml = `
+                <button onclick="claimLead(${lead.id})" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-white transition shadow-xs" title="Puxar lead para você com 1 clique">
+                    <i class="ph-bold ph-hand-pointing text-xs"></i>
+                    <span>Assumir Lead</span>
+                </button>
+            `;
+        } else if (isAdmin) {
+            const operatorOptions = appState.operators.length > 0 ? appState.operators.map(op => {
+                return `<option value="${escapeHtml(op.name)}" ${op.name === currentAssigned ? 'selected' : ''}>${escapeHtml(op.name)}</option>`;
+            }).join('') : `<option value="${escapeHtml(currentAssigned)}" selected>${escapeHtml(currentAssigned)}</option>`;
+
+            operatorCellHtml = `
+                <select onchange="changeLeadOperator(${lead.id}, this.value)" class="px-2 py-1 rounded-md text-[11px] font-medium border border-stone-200 dark:border-darkborder bg-white dark:bg-darkcard text-stone-700 dark:text-stone-200 focus:outline-none focus:border-stone-500 cursor-pointer" title="Gerente: Reatribuir vendedor">
+                    ${operatorOptions}
+                </select>
+            `;
+        } else if (isOwner) {
+            operatorCellHtml = `
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/40" title="Você é o responsável por este lead">
+                    <i class="ph-bold ph-check-circle text-emerald-600"></i> Seu Lead
+                </span>
+            `;
+        } else {
+            operatorCellHtml = `
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-stone-100 text-stone-600 dark:bg-darkcard2 dark:text-stone-300 border border-stone-200 dark:border-darkborder" title="Lead sob responsabilidade de ${escapeHtml(currentAssigned)}">
+                    <i class="ph-bold ph-lock text-stone-400"></i> ${escapeHtml(currentAssigned)}
+                </span>
+            `;
+        }
+
+        // Status & CRM Column UI
+        let statusCellHtml = '';
+        if (canEdit) {
+            statusCellHtml = `
+                <select onchange="changeLeadCrmStatus(${lead.id}, this.value)" class="px-2 py-1 rounded-md text-[11px] font-medium border border-stone-200 dark:border-darkborder bg-white dark:bg-darkcard text-stone-700 dark:text-stone-200 focus:outline-none focus:border-stone-500 cursor-pointer">
+                    <option value="Novo" ${lead.crm_status === 'Novo' ? 'selected' : ''}>Novo</option>
+                    <option value="Contatado" ${lead.crm_status === 'Contatado' ? 'selected' : ''}>Contatado</option>
+                    <option value="Reunião Agendada" ${lead.crm_status === 'Reunião Agendada' ? 'selected' : ''}>Reunião Agendada</option>
+                    <option value="Em Negociação" ${lead.crm_status === 'Em Negociação' ? 'selected' : ''}>Em Negociação</option>
+                    <option value="Fechado (R$ 1.000)" ${lead.crm_status === 'Fechado (R$ 1.000)' ? 'selected' : ''}>Fechado (R$ 1.000)</option>
+                    <option value="Perdido" ${lead.crm_status === 'Perdido' ? 'selected' : ''}>Perdido</option>
+                </select>
+                ${scheduleBadge}
+            `;
+        } else {
+            statusCellHtml = `
+                <div class="space-y-1">
+                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold bg-stone-100 dark:bg-darkcard2 text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-darkborder" title="Em atendimento por ${escapeHtml(currentAssigned)}">
+                        <i class="ph-bold ph-lock text-stone-400"></i> ${escapeHtml(lead.crm_status || 'Novo')}
+                    </span>
+                    ${scheduleBadge}
+                </div>
+            `;
+        }
 
         return `
             <tr class="border-b border-stone-200/60 dark:border-darkborder/50 hover:bg-[#F5F3EF]/60 dark:hover:bg-darkcard2/40 transition-colors">
@@ -976,11 +1210,35 @@ function renderLeadsTable(leads) {
                         <span>${escapeHtml(lead.address || 'Brasil')}</span>
                     </div>
                     ${lead.distance_km != null ? `
-                        <div class="mt-1 inline-flex items-center gap-1 text-[9.5px] font-medium text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-stone-800/80 px-1.5 py-0.2 rounded border border-stone-200 dark:border-stone-700" title="Distância estimada da sua residência (R. Lótus, 450 - Araucária/PR)">
+                        <div class="mt-1 inline-flex items-center gap-1 text-[9.5px] font-medium text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-stone-800/80 px-1.5 py-0.5 rounded border border-stone-200 dark:border-stone-700" title="Distância estimada da sua residência (R. Lótus, 450 - Araucária/PR)">
                             <i class="ph-bold ph-navigation-arrow text-[9px]"></i>
                             <span>${lead.distance_km.toFixed(1)} km de você</span>
                         </div>
                     ` : ''}
+
+                    <!-- CNPJ Status & Sócios Badge -->
+                    <div class="mt-1 flex items-center gap-1 flex-wrap">
+                        ${lead.cnpj && lead.cnpj !== 'Não localizado' ? `
+                            <button type="button" onclick="openCnpjModal(${lead.id})" class="inline-flex items-center gap-1 text-[9.5px] font-medium px-1.5 py-0.5 rounded border transition cursor-pointer ${
+                                lead.cnpj_situacao === 'ATIVA' 
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60 hover:border-emerald-400' 
+                                    : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60 hover:border-rose-400'
+                            }" title="${lead.cnpj_situacao === 'ATIVA' ? 'CNPJ Ativo na Receita Federal • Clique para ver sócios' : 'CNPJ Inativo/Baixado na Receita Federal'}">
+                                <i class="ph-bold ${lead.cnpj_situacao === 'ATIVA' ? 'ph-identification-card text-emerald-600' : 'ph-warning-octagon text-rose-600'} text-[10px]"></i>
+                                <span>${escapeHtml(lead.cnpj)} (${escapeHtml(lead.cnpj_situacao || 'ATIVA')})</span>
+                            </button>
+                        ` : (lead.cnpj_situacao === 'NÃO LOCALIZADO' ? `
+                            <button type="button" onclick="fetchLeadCnpj(${lead.id}, true)" id="btnCnpj_${lead.id}" class="inline-flex items-center gap-1 text-[9.5px] text-stone-400 dark:text-stone-500 bg-stone-50 dark:bg-darkcard px-1.5 py-0.5 rounded border border-dashed border-stone-200 dark:border-darkborder hover:text-stone-700 dark:hover:text-stone-200 transition cursor-pointer" title="CNPJ não localizado automaticamente • Clique para tentar nova busca">
+                                <i class="ph-bold ph-question text-[10px]"></i>
+                                <span>Sem CNPJ (Tentar busca)</span>
+                            </button>
+                        ` : `
+                            <button type="button" onclick="fetchLeadCnpj(${lead.id})" id="btnCnpj_${lead.id}" class="inline-flex items-center gap-1 text-[9.5px] font-medium text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white bg-stone-100 hover:bg-stone-200 dark:bg-darkcard2 dark:hover:bg-darkcard px-1.5 py-0.5 rounded border border-stone-200 dark:border-darkborder transition cursor-pointer" title="Buscar CNPJ, Situação Cadastral e Sócios na Receita Federal">
+                                <i class="ph-bold ph-identification-card text-[10px]"></i>
+                                <span>Buscar CNPJ</span>
+                            </button>
+                        `)}
+                    </div>
                 </td>
 
                 <!-- 3. Contato + Phone Type Badge -->
@@ -1028,22 +1286,12 @@ function renderLeadsTable(leads) {
 
                 <!-- 6. SDR Responsável -->
                 <td class="py-2.5 px-3 whitespace-nowrap">
-                    <select onchange="changeLeadOperator(${lead.id}, this.value)" class="px-2 py-1 rounded-md text-[11px] font-medium border border-stone-200 dark:border-darkborder bg-white dark:bg-darkcard text-stone-700 dark:text-stone-200 focus:outline-none focus:border-stone-500 cursor-pointer">
-                        ${operatorOptions}
-                    </select>
+                    ${operatorCellHtml}
                 </td>
 
                 <!-- 7. Status & Agenda -->
                 <td class="py-2.5 px-3 whitespace-nowrap">
-                    <select onchange="changeLeadCrmStatus(${lead.id}, this.value)" class="px-2 py-1 rounded-md text-[11px] font-medium border border-stone-200 dark:border-darkborder bg-white dark:bg-darkcard text-stone-700 dark:text-stone-200 focus:outline-none focus:border-stone-500 cursor-pointer">
-                        <option value="Novo" ${lead.crm_status === 'Novo' ? 'selected' : ''}>Novo</option>
-                        <option value="Contatado" ${lead.crm_status === 'Contatado' ? 'selected' : ''}>Contatado</option>
-                        <option value="Reunião Agendada" ${lead.crm_status === 'Reunião Agendada' ? 'selected' : ''}>Reunião Agendada</option>
-                        <option value="Em Negociação" ${lead.crm_status === 'Em Negociação' ? 'selected' : ''}>Em Negociação</option>
-                        <option value="Fechado (R$ 1.000)" ${lead.crm_status === 'Fechado (R$ 1.000)' ? 'selected' : ''}>Fechado (R$ 1.000)</option>
-                        <option value="Perdido" ${lead.crm_status === 'Perdido' ? 'selected' : ''}>Perdido</option>
-                    </select>
-                    ${scheduleBadge}
+                    ${statusCellHtml}
                 </td>
 
                 <!-- 8. Ações Comerciais -->
@@ -1434,9 +1682,23 @@ async function openScriptModal(leadId) {
         appState.activeLeadData = data;
 
         document.getElementById('modalCompanyName').innerText = lead.name;
-        document.getElementById('modalSubtitle').innerText = `${lead.qualification_status} • Score: ${lead.lead_score} pts • ${lead.phone || 'Sem telefone'} • SDR: ${lead.assigned_to || 'Jamilly'}`;
+        let coldCall = data.cold_call_script;
+        if (lead.cnpj_socios && lead.cnpj_socios !== 'Proprietário não identificado') {
+            const firstSocio = lead.cnpj_socios.split(',')[0].trim();
+            coldCall = `★ GANCHO DE FECHAMENTO (SÓCIO NA RECEITA FEDERAL):\n"Olá! Gostaria de falar com ${firstSocio}, por favor? Sou ${lead.assigned_to || appState.activeOperator || 'Jamilly'} da Marq Lab..."\n\n----------------------------------------\n` + coldCall;
+        }
 
-        document.getElementById('modalColdCallText').value = data.cold_call_script;
+        if (lead.cnpj_situacao && lead.cnpj_situacao !== 'ATIVA' && lead.cnpj && lead.cnpj !== 'Não localizado') {
+            coldCall = `[ALERTA CADASTRAL] CNPJ ${lead.cnpj_situacao} NA RECEITA FEDERAL (${escapeHtml(lead.cnpj)})\nEsta empresa consta como ${lead.cnpj_situacao} nos registros oficiais (pode ser baixa voluntária ou encerramento de atividades). Tenha cautela na abordagem ou utilize como gancho de regularização comercial.\n\n----------------------------------------\n` + coldCall;
+        }
+
+        if (lead.cnpj && lead.cnpj !== 'Não localizado') {
+            document.getElementById('modalSubtitle').innerText = `${lead.qualification_status} • CNPJ: ${lead.cnpj} (${lead.cnpj_situacao || 'ATIVA'}) • SDR: ${lead.assigned_to || 'Jamilly'}`;
+        } else {
+            document.getElementById('modalSubtitle').innerText = `${lead.qualification_status} • Score: ${lead.lead_score} pts • ${lead.phone || 'Sem telefone'} • SDR: ${lead.assigned_to || 'Jamilly'}`;
+        }
+
+        document.getElementById('modalColdCallText').value = coldCall;
         document.getElementById('modalWhatsAppText').value = data.whatsapp_script;
         document.getElementById('modalFollowup1Text').value = data.whatsapp_followup_1 || '';
         document.getElementById('modalFollowup2Text').value = data.whatsapp_followup_2 || '';
@@ -1540,16 +1802,20 @@ async function changeLeadCrmStatus(leadId, newStatus) {
         if (data.success) {
             showToast(`Status atualizado para '${newStatus}'!`, 'success');
             loadKpis();
+        } else {
+            showToast(data.error || 'Erro ao atualizar status.', 'error');
+            loadLeadsTable();
         }
     } catch (err) {
         showToast('Erro ao atualizar status: ' + err.message, 'error');
+        loadLeadsTable();
     }
 }
 
 function confirmClearLeads() {
-    const perm = getActiveOperatorPermission();
-    if (perm !== 'ADMIN') {
-        showToast('Acesso Restrito: Apenas Gestores/Administradores (ex: Marcos) podem limpar a base de leads.', 'error');
+    const isAdmin = appState.currentUser && appState.currentUser.permission_level === 'ADMIN';
+    if (!isAdmin) {
+        showToast('Acesso Restrito: Apenas Gestores/Administradores podem limpar a base de leads.', 'error');
         return;
     }
     document.getElementById('clearConfirmModal').classList.remove('hidden');
@@ -1580,9 +1846,13 @@ async function executeClearLeads() {
 }
 
 // ----------------------------------------------------
-// 16. WEBSITE SCREENSHOT VIEWER (PLAYWRIGHT PROOF)
+// 16. WEBSITE SCREENSHOT VIEWER (WARM MINIMALIST & FAST WORKER)
 // ----------------------------------------------------
+let currentScreenshotLeadId = null;
+
 async function openScreenshotModal(leadId, refresh = false) {
+    currentScreenshotLeadId = leadId;
+
     const modal = document.getElementById('screenshotModal');
     const titleEl = document.getElementById('screenshotModalTitle');
     const urlEl = document.getElementById('screenshotModalUrl');
@@ -1607,17 +1877,18 @@ async function openScreenshotModal(leadId, refresh = false) {
     }
     if (auditNotes) {
         auditNotes.innerHTML = `
-            <i class="ph-bold ph-warning-circle text-amber-500 text-sm"></i>
+            <i class="ph-bold ph-info text-stone-500 text-xs"></i>
             <span><strong>Diagnóstico:</strong> ${escapeHtml(auditDetail || (websiteUrl ? 'Necessita modernização de design e botão de WhatsApp.' : 'Empresa sem website cadastrado - Alvo de alta prioridade.'))}</span>
         `;
     }
 
+    // Immediately clear previous lead's image and show clean loader
     if (container) {
         container.innerHTML = `
-            <div class="py-16 text-center text-slate-400 space-y-3">
-                <div class="inline-block w-8 h-8 border-2 border-stone-800 dark:border-stone-200 border-t-transparent rounded-full animate-spin"></div>
-                <p class="text-xs font-semibold text-slate-200">Capturando snapshot em alta resolução...</p>
-                <p class="text-[10px] text-slate-400">Playwright Chromium renderizando a visualização em tempo real.</p>
+            <div class="py-16 text-center text-stone-500 space-y-3">
+                <div class="inline-block w-6 h-6 border-2 border-stone-800 dark:border-stone-200 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-xs font-semibold text-stone-800 dark:text-stone-200">Renderizando visualização...</p>
+                <p class="text-[11px] text-stone-400">Playwright capturando em alta velocidade.</p>
             </div>
         `;
     }
@@ -1629,7 +1900,11 @@ async function openScreenshotModal(leadId, refresh = false) {
         const res = await fetch(urlToFetch);
         const data = await res.json();
 
-        // Update header details from API response if available
+        // If the user navigated to another lead while waiting, do not render this stale response
+        if (currentScreenshotLeadId !== leadId) {
+            return;
+        }
+
         if (data.lead_name && titleEl) titleEl.innerText = `Print: ${data.lead_name}`;
         if (data.website && urlEl) urlEl.innerText = data.website;
 
@@ -1637,14 +1912,14 @@ async function openScreenshotModal(leadId, refresh = false) {
             const timeLabel = data.cached_at || 'agora';
             container.innerHTML = `
                 <div class="w-full flex flex-col items-center gap-2">
-                    <img src="${data.screenshot_url}?t=${Date.now()}" alt="Screenshot de ${escapeHtml(leadName)}"
-                        class="w-full max-h-[65vh] object-contain object-top rounded-lg shadow-2xl border border-slate-700 bg-white transition-transform hover:scale-[1.01]">
-                    <div class="text-[10px] text-slate-400 flex items-center justify-between w-full px-2 pt-1">
-                        <span class="flex items-center gap-1.5 text-emerald-400">
-                            <i class="ph-bold ph-check"></i>
+                    <img src="${data.screenshot_url}?t=${Date.now()}" alt="Screenshot de ${escapeHtml(data.lead_name || leadName)}"
+                        class="w-full max-h-[68vh] object-contain object-top rounded-lg border border-stone-200 dark:border-darkborder bg-white shadow-sm">
+                    <div class="text-[10px] text-stone-500 flex items-center justify-between w-full px-1 pt-1 font-mono">
+                        <span class="flex items-center gap-1.5 text-stone-600 dark:text-stone-300">
+                            <i class="ph-bold ph-check text-emerald-600"></i>
                             <span>Capturado em ${escapeHtml(timeLabel)}</span>
                         </span>
-                        <button onclick="openScreenshotModal(${leadId}, true)" class="text-[10px] text-brand-400 hover:text-brand-300 underline flex items-center gap-1 cursor-pointer">
+                        <button onclick="openScreenshotModal(${leadId}, true)" class="text-[10px] text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:white underline flex items-center gap-1 cursor-pointer">
                             <i class="ph-bold ph-arrows-clockwise"></i> Recarregar Print
                         </button>
                     </div>
@@ -1652,23 +1927,24 @@ async function openScreenshotModal(leadId, refresh = false) {
             `;
         } else {
             container.innerHTML = `
-                <div class="py-12 text-center text-rose-400 space-y-2">
-                    <i class="ph-bold ph-warning-octagon text-3xl"></i>
-                    <p class="text-xs font-bold">${escapeHtml(data.error || 'Não foi possível capturar o print deste site.')}</p>
-                    <p class="text-[11px] text-slate-400">O servidor do cliente pode estar bloqueando automações ou sem certificado SSL.</p>
-                    <button onclick="openScreenshotModal(${leadId}, true)" class="mt-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white cursor-pointer">
+                <div class="py-12 text-center text-stone-600 dark:text-stone-300 space-y-2">
+                    <i class="ph-bold ph-warning-circle text-2xl text-amber-600"></i>
+                    <p class="text-xs font-semibold">${escapeHtml(data.error || 'Não foi possível capturar o print deste site.')}</p>
+                    <p class="text-[11px] text-stone-400">O servidor pode estar offline, bloqueando automações ou sem SSL.</p>
+                    <button onclick="openScreenshotModal(${leadId}, true)" class="mt-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 hover:bg-stone-800 transition cursor-pointer">
                         Tentar Novamente
                     </button>
                 </div>
             `;
         }
     } catch (err) {
+        if (currentScreenshotLeadId !== leadId) return;
         container.innerHTML = `
-            <div class="py-12 text-center text-rose-400 space-y-2">
-                <i class="ph-bold ph-x-circle text-3xl"></i>
-                <p class="text-xs font-bold">Falha de conexão com o servidor.</p>
-                <p class="text-[11px] text-slate-400">${escapeHtml(err.message)}</p>
-                <button onclick="openScreenshotModal(${leadId}, true)" class="mt-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white cursor-pointer">
+            <div class="py-12 text-center text-stone-600 dark:text-stone-300 space-y-2">
+                <i class="ph-bold ph-x-circle text-2xl text-rose-600"></i>
+                <p class="text-xs font-semibold">Falha de conexão com o servidor.</p>
+                <p class="text-[11px] text-stone-400">${escapeHtml(err.message)}</p>
+                <button onclick="openScreenshotModal(${leadId}, true)" class="mt-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 hover:bg-stone-800 transition cursor-pointer">
                     Tentar Novamente
                 </button>
             </div>
@@ -1677,8 +1953,11 @@ async function openScreenshotModal(leadId, refresh = false) {
 }
 
 function closeScreenshotModal() {
+    currentScreenshotLeadId = null;
     const modal = document.getElementById('screenshotModal');
     if (modal) modal.classList.add('hidden');
+    const container = document.getElementById('screenshotContainer');
+    if (container) container.innerHTML = '';
 }
 
 // ----------------------------------------------------
@@ -1713,3 +1992,157 @@ function escapeHtml(text) {
     const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
     return text.toString().replace(/[&<>"']/g, m => map[m]);
 }
+
+// ----------------------------------------------------
+// 18. CNPJ DISCOVERY & RECEITA FEDERAL ENRICHMENT
+// ----------------------------------------------------
+appState.activeCnpjLeadId = null;
+
+async function fetchLeadCnpj(leadId, force = false) {
+    const btn = document.getElementById(`btnCnpj_${leadId}`);
+    if (btn) {
+        btn.innerHTML = `<div class="inline-block w-2.5 h-2.5 border border-stone-800 dark:border-stone-200 border-t-transparent rounded-full animate-spin"></div> <span>Buscando...</span>`;
+        btn.disabled = true;
+    }
+
+    try {
+        const res = await fetch(`/api/lead/${leadId}/cnpj${force ? '?refresh=1' : ''}`, {
+            method: 'POST'
+        });
+        const data = await res.json();
+        if (data.success && data.data && data.data.cnpj && data.data.cnpj !== 'Não localizado') {
+            showToast(`CNPJ ${data.data.cnpj_formatted} identificado com sucesso!`, 'success');
+            const lead = appState.currentLeads.find(l => l.id == leadId);
+            if (lead) {
+                lead.cnpj = data.data.cnpj_formatted;
+                lead.cnpj_razao_social = data.data.razao_social;
+                lead.cnpj_situacao = data.data.situacao_cadastral;
+                lead.cnpj_porte = data.data.porte;
+                lead.cnpj_socios = data.data.socios_str;
+                lead.cnpj_abertura = data.data.data_inicio_atividade;
+                lead.cnpj_capital = data.data.capital_social;
+                lead.cnpj_cnae = data.data.cnae_fiscal_descricao;
+                lead.cnpj_regime = data.data.regime;
+            }
+            loadLeadsTable();
+            openCnpjModal(leadId);
+        } else {
+            showToast('CNPJ não localizado automaticamente nos registros públicos.', 'info');
+            const lead = appState.currentLeads.find(l => l.id == leadId);
+            if (lead) {
+                lead.cnpj_situacao = 'NÃO LOCALIZADO';
+            }
+            loadLeadsTable();
+        }
+    } catch (err) {
+        showToast('Erro ao consultar CNPJ: ' + err.message, 'error');
+        if (btn) {
+            btn.innerHTML = `<i class="ph-bold ph-identification-card text-[10px]"></i> <span>Buscar CNPJ</span>`;
+            btn.disabled = false;
+        }
+    }
+}
+
+async function openCnpjModal(leadId) {
+    appState.activeCnpjLeadId = leadId;
+    const modal = document.getElementById('cnpjModal');
+    const titleEl = document.getElementById('cnpjModalTitle');
+    const subEl = document.getElementById('cnpjModalSubtitle');
+    const container = document.getElementById('cnpjModalContent');
+
+    const lead = appState.currentLeads.find(l => l.id == leadId);
+    if (!lead) return;
+
+    if (titleEl) titleEl.innerText = `Raio-X: ${lead.name}`;
+    if (subEl) subEl.innerText = lead.cnpj_razao_social || 'Consulta Receita Federal';
+
+    if (modal) modal.classList.remove('hidden');
+
+    const situacao = lead.cnpj_situacao || 'ATIVA';
+    const isAtiva = situacao === 'ATIVA';
+    const sociosList = (lead.cnpj_socios || '').split(',').map(s => s.trim()).filter(Boolean);
+
+    container.innerHTML = `
+        <div class="p-3.5 rounded-lg border ${isAtiva ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50' : 'bg-rose-50/60 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/50'} flex items-start justify-between gap-3">
+            <div>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${isAtiva ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}">
+                    <i class="ph-bold ${isAtiva ? 'ph-check-circle' : 'ph-x-circle'}"></i>
+                    <span>SITUAÇÃO: ${situacao}</span>
+                </span>
+                <h3 class="mt-1.5 font-bold text-sm text-stone-900 dark:text-white font-mono">${escapeHtml(lead.cnpj || 'Não identificado')}</h3>
+                <p class="text-[11px] text-stone-600 dark:text-stone-300 font-medium">${escapeHtml(lead.cnpj_razao_social || lead.name)}</p>
+            </div>
+            <button onclick="navigator.clipboard.writeText('${lead.cnpj || ''}'); showToast('CNPJ copiado!', 'success')" class="px-2 py-1 rounded text-xs font-medium border border-stone-200 dark:border-darkborder bg-white dark:bg-darkcard text-stone-700 dark:text-stone-200 hover:border-stone-400 transition flex items-center gap-1 shadow-xs shrink-0">
+                <i class="ph ph-copy"></i> Copiar
+            </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+            <div class="p-2.5 rounded-lg bg-[#FAF9F6] dark:bg-darkbg border border-stone-200 dark:border-darkborder">
+                <span class="text-[10px] uppercase font-bold text-stone-400">Tempo de Mercado / Abertura</span>
+                <p class="text-xs font-semibold text-stone-800 dark:text-stone-200 mt-0.5 font-mono">${escapeHtml(lead.cnpj_abertura || 'Não informado')}</p>
+            </div>
+            <div class="p-2.5 rounded-lg bg-[#FAF9F6] dark:bg-darkbg border border-stone-200 dark:border-darkborder">
+                <span class="text-[10px] uppercase font-bold text-stone-400">Porte & Regime</span>
+                <p class="text-xs font-semibold text-stone-800 dark:text-stone-200 mt-0.5">${escapeHtml(lead.cnpj_porte || 'ME')} • ${escapeHtml(lead.cnpj_regime || 'Simples')}</p>
+            </div>
+        </div>
+
+        <div class="p-3 rounded-lg bg-[#FAF9F6] dark:bg-darkbg border border-stone-200 dark:border-darkborder space-y-1.5">
+            <div class="flex items-center justify-between">
+                <span class="text-[10px] uppercase font-bold text-stone-400 flex items-center gap-1">
+                    <i class="ph-bold ph-users text-stone-600 dark:text-stone-300"></i>
+                    <span>Sócios & Administradores Registrados (QSA)</span>
+                </span>
+                <span class="text-[10px] text-stone-400">${sociosList.length} pessoa(s)</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5 pt-1">
+                ${sociosList.length > 0 ? sociosList.map(socio => `
+                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-white dark:bg-darkcard text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-darkborder shadow-xs">
+                        <i class="ph-bold ph-user-circle text-stone-500"></i>
+                        <span>${escapeHtml(socio)}</span>
+                    </span>
+                `).join('') : `
+                    <span class="text-xs text-stone-400 italic">Empresa individual ou sócio não listado na consulta rápida.</span>
+                `}
+            </div>
+        </div>
+
+        ${lead.cnpj_cnae ? `
+            <div class="p-2.5 rounded-lg bg-[#FAF9F6] dark:bg-darkbg border border-stone-200 dark:border-darkborder">
+                <span class="text-[10px] uppercase font-bold text-stone-400">Atividade Principal (CNAE)</span>
+                <p class="text-xs text-stone-700 dark:text-stone-300 mt-0.5 leading-snug">${escapeHtml(lead.cnpj_cnae)}</p>
+            </div>
+        ` : ''}
+    `;
+}
+
+function closeCnpjModal() {
+    const modal = document.getElementById('cnpjModal');
+    if (modal) modal.classList.add('hidden');
+    appState.activeCnpjLeadId = null;
+}
+
+function openScriptFromCnpj() {
+    const leadId = appState.activeCnpjLeadId;
+    closeCnpjModal();
+    if (leadId) {
+        openScriptModal(leadId);
+    }
+}
+
+async function enrichAllVisibleCnpjs() {
+    const leadsToEnrich = (appState.currentLeads || []).filter(l => !l.cnpj || l.cnpj === 'Não localizado').slice(0, 8);
+    if (leadsToEnrich.length === 0) {
+        showToast('Todos os leads visíveis já possuem consulta de CNPJ.', 'info');
+        return;
+    }
+
+    showToast(`Buscando CNPJ para ${leadsToEnrich.length} leads em segundo plano...`, 'info');
+    for (const lead of leadsToEnrich) {
+        await fetchLeadCnpj(lead.id, false);
+        await new Promise(r => setTimeout(r, 1200));
+    }
+    showToast('Enriquecimento de CNPJs concluído!', 'success');
+}
+

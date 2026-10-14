@@ -9,24 +9,29 @@ import io
 import json
 import time
 import queue
-from datetime import datetime
-from flask import Flask, render_template, request, jsonify, Response, send_file
+from datetime import datetime, timedelta
+from flask import Flask, render_template, request, jsonify, Response, send_file, session, redirect, url_for
 import pandas as pd
 
 import database
 import scraper
 import pitch_generator
+import screenshot_service
+import cnpj_service
+import auth
 
 app = Flask(__name__)
-app.secret_key = "marq-lab-lead-secret-key"
+app.secret_key = os.environ.get("MARQ_SECRET_KEY", "marq-lab-lead-secret-key-prod-secure-2026")
 app.config["TEMPLATES_AUTO_RELOAD"] = True
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
 
 # Queue for Server-Sent Events (SSE)
 sse_queues = []
+active_presences = {}
 
 
-def sse_event_listener(data):
-    """Callback for scraper events to broadcast to all open SSE connections."""
+def broadcast_sse(data):
+    """Broadcast an event to all connected users via SSE."""
     msg = f"data: {json.dumps(data)}\n\n"
     for q in list(sse_queues):
         try:
@@ -35,17 +40,146 @@ def sse_event_listener(data):
             pass
 
 
+def sse_event_listener(data):
+    """Callback for scraper events to broadcast to all open SSE connections."""
+    broadcast_sse(data)
+
+
 # Register listener to active scraper
 scraper.active_scraper.subscribers.append(sse_event_listener)
 
 
+# ----------------------------------------------------
+# AUTHENTICATION & SESSION ROUTES
+# ----------------------------------------------------
+@app.route("/login", methods=["GET"])
+def login_view():
+    database.init_db()
+    if auth.get_current_user():
+        return redirect(url_for("index"))
+    return render_template("login.html")
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def api_login():
+    data = request.get_json() or {}
+    identifier = data.get("identifier", "").strip()
+    password = data.get("password", "")
+    remember = data.get("remember", True)
+
+    user = auth.authenticate(identifier, password)
+    if not user:
+        return jsonify({"success": False, "error": "E-mail/usuário ou senha incorretos."}), 401
+
+    session.permanent = bool(remember)
+    session["user_id"] = user["id"]
+    session["user_name"] = user["name"]
+    session["user_email"] = user.get("email")
+    session["permission_level"] = user.get("permission_level", "SDR")
+
+    database.add_log(f"Login efetuado com sucesso pelo usuário '{user['name']}' ({user.get('permission_level')}).", "INFO")
+    return jsonify({"success": True, "user": user})
+
+
+@app.route("/api/auth/logout", methods=["POST", "GET"])
+def api_logout():
+    user_name = session.get("user_name", "Usuário")
+    session.clear()
+    database.add_log(f"Usuário '{user_name}' encerrou a sessão.", "INFO")
+    if request.path.startswith("/api/"):
+        return jsonify({"success": True, "message": "Sessão encerrada com sucesso."})
+    return redirect(url_for("login_view"))
+
+
+@app.route("/api/auth/me", methods=["GET"])
+def api_me():
+    user = auth.get_current_user()
+    if not user:
+        return jsonify({"success": False, "unauthenticated": True}), 401
+    return jsonify({"success": True, "user": user})
+
+
+@app.route("/api/auth/operators_setup", methods=["GET"])
+def api_operators_setup():
+    """Public helper for first-time onboarding / password activation."""
+    ops = database.get_operators()
+    has_any = database.count_operators_with_access() > 0
+    safe_ops = [{"id": o["id"], "name": o["name"], "role": o.get("role", "SDR"), "email": o.get("email"), "has_access": o.get("has_access", False)} for o in ops]
+    return jsonify({"success": True, "operators": safe_ops, "has_any_access": has_any})
+
+
+@app.route("/api/auth/activate", methods=["POST"])
+def api_activate():
+    """Sets initial password and email for an operator."""
+    data = request.get_json() or {}
+    op_id = data.get("operator_id")
+    email = data.get("email", "").strip()
+    password = data.get("password", "").strip()
+
+    if not op_id or not email or not password:
+        return jsonify({"success": False, "error": "Todos os campos são obrigatórios."}), 400
+
+    if len(password) < 6:
+        return jsonify({"success": False, "error": "A senha deve conter no mínimo 6 caracteres."}), 400
+
+    op = database.get_operator_by_id(op_id)
+    if not op:
+        return jsonify({"success": False, "error": "Membro não encontrado."}), 404
+
+    # Check if email is already taken by another operator
+    existing = database.get_operator_by_email(email)
+    if existing and existing["id"] != op_id:
+        return jsonify({"success": False, "error": "Este e-mail já está em uso por outro membro."}), 400
+
+    pwd_hash = auth.hash_password(password)
+    database.set_operator_credentials(op_id, email, pwd_hash)
+
+    # Automatically log the user in
+    session.permanent = True
+    session["user_id"] = op["id"]
+    session["user_name"] = op["name"]
+    session["user_email"] = email.lower()
+    session["permission_level"] = op.get("permission_level", "SDR")
+
+    database.add_log(f"Primeiro acesso/ativação de senha concluído para '{op['name']}' ({email}).", "SUCCESS")
+    return jsonify({"success": True, "message": "Conta ativada com sucesso!", "user": {
+        "id": op["id"],
+        "name": op["name"],
+        "email": email,
+        "permission_level": op.get("permission_level", "SDR")
+    }})
+
+
+@app.route("/api/presence/ping", methods=["POST"])
+@auth.login_required
+def presence_ping():
+    """Heartbeat endpoint for multi-user presence."""
+    user = auth.get_current_user()
+    now = time.time()
+    active_presences[user["id"]] = {
+        "id": user["id"],
+        "name": user["name"],
+        "role": user.get("role", "SDR"),
+        "permission_level": user.get("permission_level", "SDR"),
+        "last_seen": now
+    }
+    # Clean up presences older than 60s
+    active_list = [p for p in active_presences.values() if now - p["last_seen"] < 60]
+    return jsonify({"success": True, "active_users": active_list})
+
+
+# ----------------------------------------------------
+# MAIN DASHBOARD VIEW
+# ----------------------------------------------------
 @app.route("/")
+@auth.login_required
 def index():
     database.init_db()
     return render_template("index.html")
 
 
 @app.route("/api/scrape/start", methods=["POST"])
+@auth.login_required
 def start_scrape():
     data = request.get_json() or {}
     niche = data.get("niche", "").strip()
@@ -70,6 +204,7 @@ def start_scrape():
 
 
 @app.route("/api/scrape/stop", methods=["POST"])
+@auth.login_required
 def stop_scrape():
     stopped = scraper.stop_scraping()
     return jsonify({"success": True, "stopped": stopped})
@@ -113,6 +248,7 @@ def sse_stream():
 
 
 @app.route("/api/leads", methods=["GET"])
+@auth.login_required
 def list_leads():
     campaign_id = request.args.get("campaign_id", type=int)
     status_filter = request.args.get("status", "all")
@@ -120,12 +256,14 @@ def list_leads():
     phone_type_filter = request.args.get("phone_type", "all")
     search = request.args.get("search", "")
     sort_by = request.args.get("sort_by", "score_desc")
+    cnpj_filter = request.args.get("cnpj_filter", "all")
 
     leads = database.get_leads(
         campaign_id=campaign_id,
         status_filter=status_filter,
         operator_filter=operator_filter,
         phone_type_filter=phone_type_filter,
+        cnpj_filter=cnpj_filter,
         search=search,
         sort_by=sort_by,
         limit=500
@@ -141,10 +279,17 @@ def list_leads():
         if not lead.get("phone_type") or lead.get("phone_type") == "unknown":
             lead["phone_type"] = pitch_generator.detect_phone_type(lead.get("phone", ""))
 
+    if leads:
+        try:
+            screenshot_service.prefetch(leads[:15], app.static_folder)
+        except Exception:
+            pass
+
     return jsonify({"success": True, "total": len(leads), "leads": leads})
 
 
 @app.route("/api/kpis", methods=["GET"])
+@auth.login_required
 def get_dashboard_kpis():
     campaign_id = request.args.get("campaign_id", type=int)
     kpis = database.get_kpis(campaign_id)
@@ -182,33 +327,67 @@ def get_dashboard_kpis():
 
 
 @app.route("/api/lead/<int:lead_id>/crm_status", methods=["POST"])
+@auth.login_required
 def update_crm_status(lead_id):
+    lead = database.get_lead_by_id(lead_id)
+    if not lead:
+        return jsonify({"success": False, "error": "Lead não encontrado."}), 404
+
+    user = auth.get_current_user()
+    if not auth.can_edit_lead(user, lead):
+        return jsonify({
+            "success": False,
+            "error": f"Acesso Negado: Este lead pertence a '{lead.get('assigned_to')}'. Apenas o responsável ou o Gestor podem editá-lo."
+        }), 403
+
     data = request.get_json() or {}
     new_status = data.get("status", "Novo")
     notes = data.get("notes")
+
+    # If lead was unassigned, assign to current user
+    if not lead.get("assigned_to") or lead.get("assigned_to") in ["unassigned", "Sem Atribuição"]:
+        database.assign_lead(lead_id, user["name"])
+
     database.update_lead_crm_status(lead_id, new_status, notes)
-    database.add_log(f"Status do Lead #{lead_id} alterado para '{new_status}'.", "INFO")
+    database.add_log(f"Status do Lead #{lead_id} alterado para '{new_status}' por '{user['name']}'.", "INFO")
+    broadcast_sse({
+        "type": "lead_status_changed",
+        "lead_id": lead_id,
+        "new_status": new_status,
+        "operator": user["name"],
+        "assigned_to": lead.get("assigned_to") or user["name"]
+    })
     return jsonify({"success": True, "lead_id": lead_id, "new_status": new_status})
 
 
 @app.route("/api/leads/clear", methods=["POST"])
+@auth.admin_required
 def clear_leads_api():
-    data = request.get_json(silent=True) or {}
-    operator_name = data.get("operator", "Marcos")
-    op = database.get_operator_by_name(operator_name)
-    if op and op.get("permission_level") != "ADMIN":
-        return jsonify({
-            "success": False,
-            "error": "Acesso Negado: Apenas Gestores/Administradores possuem permissão para limpar a base de leads."
-        }), 403
-
+    user = auth.get_current_user()
     database.clear_all_leads()
-    database.add_log(f"Base de dados de leads limpa pelo administrador '{operator_name}'.", "WARNING")
+    try:
+        screenshot_service.clear_cache(app.static_folder)
+    except Exception:
+        pass
+    database.add_log(f"Base de dados de leads limpa pelo administrador '{user['name']}'.", "WARNING")
+    broadcast_sse({"type": "database_cleared", "operator": user["name"]})
     return jsonify({"success": True, "message": "Base de leads e histórico limpos com sucesso."})
 
 
 @app.route("/api/lead/<int:lead_id>/schedule", methods=["POST"])
+@auth.login_required
 def schedule_lead_meeting(lead_id):
+    lead = database.get_lead_by_id(lead_id)
+    if not lead:
+        return jsonify({"success": False, "error": "Lead não encontrado."}), 404
+
+    user = auth.get_current_user()
+    if not auth.can_edit_lead(user, lead):
+        return jsonify({
+            "success": False,
+            "error": f"Acesso Negado: Este lead pertence a '{lead.get('assigned_to')}'. Apenas o responsável ou o Gestor podem agendar reuniões."
+        }), 403
+
     data = request.get_json() or {}
     scheduled_at = data.get("scheduled_at", "").strip()
     meeting_notes = data.get("meeting_notes", "").strip()
@@ -216,15 +395,71 @@ def schedule_lead_meeting(lead_id):
         return jsonify({"success": False, "error": "Informe data e horário do agendamento."}), 400
 
     database.schedule_meeting(lead_id, scheduled_at, meeting_notes)
-    database.add_log(f"Reunião agendada para o Lead #{lead_id} em {scheduled_at}.", "INFO")
+    database.add_log(f"Reunião agendada para o Lead #{lead_id} em {scheduled_at} por '{user['name']}'.", "INFO")
+    broadcast_sse({
+        "type": "meeting_scheduled",
+        "lead_id": lead_id,
+        "lead_name": lead["name"],
+        "scheduled_at": scheduled_at,
+        "operator": user["name"]
+    })
     return jsonify({"success": True, "lead_id": lead_id, "scheduled_at": scheduled_at})
 
 
 @app.route("/api/lead/<int:lead_id>/unschedule", methods=["POST"])
+@auth.login_required
 def unschedule_lead_meeting(lead_id):
+    lead = database.get_lead_by_id(lead_id)
+    if not lead:
+        return jsonify({"success": False, "error": "Lead não encontrado."}), 404
+
+    user = auth.get_current_user()
+    if not auth.can_edit_lead(user, lead):
+        return jsonify({
+            "success": False,
+            "error": f"Acesso Negado: Este lead pertence a '{lead.get('assigned_to')}'."
+        }), 403
+
     database.unschedule_meeting(lead_id)
-    database.add_log(f"Reunião cancelada/removida para o Lead #{lead_id}.", "INFO")
+    database.add_log(f"Reunião cancelada/removida para o Lead #{lead_id} por '{user['name']}'.", "INFO")
+    broadcast_sse({
+        "type": "meeting_unscheduled",
+        "lead_id": lead_id,
+        "lead_name": lead["name"],
+        "operator": user["name"]
+    })
     return jsonify({"success": True, "lead_id": lead_id, "message": "Reunião cancelada com sucesso."})
+
+
+@app.route("/api/lead/<int:lead_id>/cnpj", methods=["GET", "POST"])
+def enrich_lead_cnpj_api(lead_id):
+    lead = database.get_lead_by_id(lead_id)
+    if not lead:
+        return jsonify({"success": False, "error": "Lead não encontrado."}), 404
+
+    force_refresh = request.method == "POST" or request.args.get("refresh") == "1"
+    # If already cached and not forced, return cached CNPJ details
+    if lead.get("cnpj") and not force_refresh:
+        return jsonify({
+            "success": True,
+            "lead_id": lead_id,
+            "lead_name": lead.get("name"),
+            "data": {
+                "cnpj": lead.get("cnpj"),
+                "cnpj_formatted": lead.get("cnpj"),
+                "razao_social": lead.get("cnpj_razao_social"),
+                "situacao_cadastral": lead.get("cnpj_situacao"),
+                "data_inicio_atividade": lead.get("cnpj_abertura"),
+                "porte": lead.get("cnpj_porte"),
+                "socios_str": lead.get("cnpj_socios"),
+                "capital_social": lead.get("cnpj_capital"),
+                "cnae_fiscal_descricao": lead.get("cnpj_cnae"),
+                "regime": lead.get("cnpj_regime"),
+            }
+        })
+
+    res = cnpj_service.enrich_lead_cnpj(lead_id)
+    return jsonify(res)
 
 
 @app.route("/api/meetings", methods=["GET"])
@@ -266,17 +501,60 @@ def get_lead_script(lead_id):
     })
 
 
+@app.route("/api/lead/<int:lead_id>/claim", methods=["POST"])
+@auth.login_required
+def claim_lead_api(lead_id):
+    user = auth.get_current_user()
+    lead = database.get_lead_by_id(lead_id)
+    if not lead:
+        return jsonify({"success": False, "error": "Lead não encontrado."}), 404
+
+    assigned = (lead.get("assigned_to") or "").strip()
+    if assigned and assigned != user["name"] and user["permission_level"] != "ADMIN":
+        return jsonify({"success": False, "error": f"Este lead já está atribuído a '{assigned}'."}), 403
+
+    database.claim_lead(lead_id, user["name"])
+    database.add_log(f"Lead #{lead_id} ({lead['name']}) assumido por '{user['name']}'.", "INFO")
+    broadcast_sse({
+        "type": "lead_claimed",
+        "lead_id": lead_id,
+        "lead_name": lead["name"],
+        "assigned_to": user["name"]
+    })
+    return jsonify({"success": True, "lead_id": lead_id, "assigned_to": user["name"]})
+
+
 @app.route("/api/lead/<int:lead_id>/assign", methods=["POST"])
+@auth.login_required
 def assign_lead_api(lead_id):
+    user = auth.get_current_user()
     data = request.get_json() or {}
     operator = data.get("operator", "Jamilly").strip()
+
+    lead = database.get_lead_by_id(lead_id)
+    if not lead:
+        return jsonify({"success": False, "error": "Lead não encontrado."}), 404
+
+    # If SDR tries to reassign someone else's lead, require ADMIN
+    if user["permission_level"] != "ADMIN" and operator != user["name"] and not auth.can_edit_lead(user, lead):
+        return jsonify({"success": False, "error": "Acesso negado: Apenas gestores podem transferir leads de outros vendedores."}), 403
+
     database.assign_lead(lead_id, operator)
-    database.add_log(f"Lead #{lead_id} atribuído ao operador '{operator}'.", "INFO")
+    database.add_log(f"Lead #{lead_id} atribuído ao operador '{operator}' por '{user['name']}'.", "INFO")
+    broadcast_sse({
+        "type": "lead_assigned",
+        "lead_id": lead_id,
+        "lead_name": lead["name"],
+        "operator": operator,
+        "assigned_by": user["name"]
+    })
     return jsonify({"success": True, "lead_id": lead_id, "operator": operator})
 
 
 @app.route("/api/leads/assign_bulk", methods=["POST"])
+@auth.admin_required
 def assign_leads_bulk_api():
+    user = auth.get_current_user()
     data = request.get_json() or {}
     lead_ids = data.get("lead_ids", [])
     operator = data.get("operator", "Jamilly").strip()
@@ -284,20 +562,43 @@ def assign_leads_bulk_api():
         return jsonify({"success": False, "error": "Nenhum lead selecionado"}), 400
 
     database.assign_leads_bulk(lead_ids, operator)
-    database.add_log(f"{len(lead_ids)} leads atribuídos a '{operator}'.", "INFO")
+    database.add_log(f"{len(lead_ids)} leads atribuídos a '{operator}' pelo gestor '{user['name']}'.", "INFO")
+    broadcast_sse({
+        "type": "leads_bulk_assigned",
+        "lead_ids": lead_ids,
+        "operator": operator,
+        "assigned_by": user["name"]
+    })
     return jsonify({"success": True, "count": len(lead_ids), "operator": operator})
 
 
 @app.route("/api/lead/<int:lead_id>/notes", methods=["GET", "POST"])
+@auth.login_required
 def lead_notes_api(lead_id):
+    user = auth.get_current_user()
     if request.method == "POST":
+        lead = database.get_lead_by_id(lead_id)
+        if not lead:
+            return jsonify({"success": False, "error": "Lead não encontrado."}), 404
+
+        if not auth.can_edit_lead(user, lead):
+            return jsonify({
+                "success": False,
+                "error": f"Acesso negado: Este lead pertence a '{lead.get('assigned_to')}'."
+            }), 403
+
         data = request.get_json() or {}
         note_text = data.get("note_text", "").strip()
-        operator = data.get("operator", "Jamilly").strip()
         if not note_text:
             return jsonify({"success": False, "error": "Texto da anotação vazio."}), 400
 
-        note_id = database.add_lead_note(lead_id, note_text, operator)
+        note_id = database.add_lead_note(lead_id, note_text, user["name"])
+        database.add_log(f"Nova anotação registrada no Lead #{lead_id} por '{user['name']}'.", "INFO")
+        broadcast_sse({
+            "type": "lead_note_added",
+            "lead_id": lead_id,
+            "operator": user["name"]
+        })
         return jsonify({"success": True, "note_id": note_id})
     else:
         notes = database.get_lead_notes(lead_id)
@@ -305,20 +606,69 @@ def lead_notes_api(lead_id):
 
 
 @app.route("/api/operators", methods=["GET", "POST"])
+@auth.login_required
 def operators_api():
+    user = auth.get_current_user()
     if request.method == "POST":
+        if user["permission_level"] != "ADMIN":
+            return jsonify({"success": False, "error": "Acesso negado: Apenas Gestores podem adicionar membros à equipe."}), 403
+
         data = request.get_json() or {}
         name = data.get("name", "").strip()
         role = data.get("role", "SDR / Closer").strip()
         permission_level = data.get("permission_level", "SDR").strip().upper()
+        email = data.get("email", "").strip() or None
+        password = data.get("password", "").strip()
+
         if not name:
             return jsonify({"success": False, "error": "Nome obrigatório."}), 400
 
-        op_id = database.add_operator(name, role, permission_level)
-        return jsonify({"success": True, "id": op_id, "name": name, "role": role, "permission_level": permission_level})
+        if email:
+            existing = database.get_operator_by_email(email)
+            if existing:
+                return jsonify({"success": False, "error": "E-mail já cadastrado para outro membro."}), 400
+
+        pwd_hash = auth.hash_password(password) if password else None
+        op_id = database.add_operator(name, role, permission_level, email, pwd_hash)
+        database.add_log(f"Novo membro '{name}' ({permission_level}) adicionado à equipe por '{user['name']}'.", "INFO")
+        return jsonify({"success": True, "id": op_id, "name": name, "role": role, "permission_level": permission_level, "email": email})
     else:
         ops = database.get_operators()
         return jsonify({"success": True, "operators": ops})
+
+
+@app.route("/api/operator/<int:op_id>", methods=["PUT", "DELETE"])
+@auth.admin_required
+def manage_operator_api(op_id):
+    user = auth.get_current_user()
+    op = database.get_operator_by_id(op_id)
+    if not op:
+        return jsonify({"success": False, "error": "Membro não encontrado."}), 404
+
+    if request.method == "DELETE":
+        if user["id"] == op_id:
+            return jsonify({"success": False, "error": "Você não pode desativar seu próprio usuário."}), 400
+        database.deactivate_operator(op_id)
+        database.add_log(f"Membro '{op['name']}' desativado da equipe por '{user['name']}'.", "WARNING")
+        return jsonify({"success": True, "message": f"Membro '{op['name']}' desativado com sucesso."})
+
+    # PUT: update operator
+    data = request.get_json() or {}
+    name = data.get("name", op["name"]).strip()
+    role = data.get("role", op.get("role", "SDR")).strip()
+    perm = data.get("permission_level", op.get("permission_level", "SDR")).strip().upper()
+    email = data.get("email", op.get("email") or "").strip() or None
+    new_password = data.get("password", "").strip()
+
+    if email:
+        existing = database.get_operator_by_email(email)
+        if existing and existing["id"] != op_id:
+            return jsonify({"success": False, "error": "Este e-mail já pertence a outro membro."}), 400
+
+    pwd_hash = auth.hash_password(new_password) if new_password else None
+    database.update_operator(op_id, name, role, perm, email, pwd_hash)
+    database.add_log(f"Dados do membro '{name}' atualizados por '{user['name']}'.", "INFO")
+    return jsonify({"success": True, "message": "Membro atualizado com sucesso."})
 
 
 @app.route("/api/meetings/today", methods=["GET"])
@@ -360,227 +710,18 @@ def lead_screenshot_api(lead_id):
     if not lead:
         return jsonify({"success": False, "error": "Lead não encontrado."}), 404
 
-    lead_name_escaped = lead.get("name", "Empresa")
-    raw_website = (lead.get("website") or "").strip()
-
-    screenshots_dir = os.path.join(app.static_folder, "screenshots")
-    os.makedirs(screenshots_dir, exist_ok=True)
-    filename = f"lead_{lead_id}.png"
-    filepath = os.path.join(screenshots_dir, filename)
-    rel_url = f"/static/screenshots/{filename}"
-
     force_refresh = request.args.get("refresh", "0") == "1"
-    if os.path.exists(filepath) and not force_refresh and os.path.getsize(filepath) > 1000:
-        return jsonify({
-            "success": True,
-            "lead_id": lead_id,
-            "lead_name": lead.get("name"),
-            "website": raw_website or "Sem website cadastrado",
-            "screenshot_url": rel_url,
-            "cached": True,
-            "cached_at": datetime.fromtimestamp(os.path.getmtime(filepath)).strftime("%d/%m/%Y %H:%M")
-        })
-
-    # Case 1: Lead has NO website registered in Google Maps (generate high-impact diagnostic proof card)
-    if not raw_website:
-        try:
-            from playwright.sync_api import sync_playwright
-            with sync_playwright() as p:
-                launch_args = {
-                    "headless": True,
-                    "args": ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
-                }
-                try:
-                    browser = p.chromium.launch(channel="chrome", **launch_args)
-                except Exception:
-                    try:
-                        browser = p.chromium.launch(channel="msedge", **launch_args)
-                    except Exception:
-                        browser = p.chromium.launch(**launch_args)
-
-                page = browser.new_page(viewport={"width": 1280, "height": 800})
-                page.set_content(f"""
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <style>
-                        body {{ margin: 0; background: #0f172a; font-family: 'Segoe UI', system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; color: white; }}
-                        .card {{ background: #1e293b; border: 2px solid #f59e0b; border-radius: 20px; padding: 45px 55px; max-width: 680px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }}
-                        .icon {{ font-size: 54px; margin-bottom: 15px; }}
-                        h2 {{ margin: 0 0 10px 0; color: #fbbf24; font-size: 24px; }}
-                        .lead-name {{ font-size: 18px; font-weight: 700; color: #f8fafc; margin-bottom: 15px; }}
-                        .url-box {{ background: rgba(0,0,0,0.3); border: 1px solid #334155; padding: 10px 16px; border-radius: 10px; font-family: monospace; font-size: 13px; color: #fcd34d; margin-bottom: 22px; }}
-                        p {{ font-size: 13.5px; color: #94a3b8; line-height: 1.6; margin: 0 0 15px 0; }}
-                        .highlight {{ background: rgba(245, 158, 11, 0.1); border-left: 4px solid #f59e0b; padding: 12px 18px; text-align: left; border-radius: 0 10px 10px 0; font-size: 12.5px; color: #e2e8f0; }}
-                    </style>
-                </head>
-                <body>
-                    <div class="card">
-                        <div class="icon">🚫</div>
-                        <h2>Sem Website Cadastrado no Google Maps</h2>
-                        <div class="lead-name">{lead_name_escaped}</div>
-                        <div class="url-box">Nenhum site oficial vinculado no perfil da empresa</div>
-                        <p>Esta empresa não cadastrou nenhum site ou Landing Page no Google Maps. Todos os clientes que pesquisam por ela no celular não encontram onde clicar para falar no WhatsApp.</p>
-                        <div class="highlight">
-                            <strong>🎯 Argumento Comercial de Venda (R$ 1.000,00):</strong><br>
-                            "Olá! Notei que quem pesquisa pela {lead_name_escaped} no Google não encontra um site com botão de WhatsApp direto. Vocês estão perdendo clientes para os concorrentes que já possuem página. Criamos em até 5 dias por taxa única de R$ 1.000,00!"
-                        </div>
-                    </div>
-                </body>
-                </html>
-                """)
-                time.sleep(0.3)
-                page.screenshot(path=filepath, full_page=False)
-                browser.close()
-
-            return jsonify({
-                "success": True,
-                "lead_id": lead_id,
-                "lead_name": lead.get("name"),
-                "website": "Sem site cadastrado",
-                "screenshot_url": rel_url,
-                "cached": False,
-                "cached_at": datetime.now().strftime("%d/%m/%Y %H:%M")
-            })
-        except Exception as e:
-            return jsonify({
-                "success": False,
-                "error": f"Erro ao gerar diagnóstico: {str(e)}",
-                "website": "Sem site cadastrado"
-            })
-
-    # Case 2: Website registered -> Resolve Google tracking/redirects
-    website = pitch_generator.resolve_google_ad_url(raw_website)
-    if website != raw_website:
-        database.update_lead_website(lead_id, website)
-
-    if not website.startswith("http://") and not website.startswith("https://"):
-        website = f"http://{website}"
-
-    is_wa = "wa.me" in website.lower() or "whatsapp.com" in website.lower()
-
     try:
-        from playwright.sync_api import sync_playwright
-        with sync_playwright() as p:
-            launch_args = {
-                "headless": True,
-                "args": ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
-            }
-            try:
-                browser = p.chromium.launch(channel="chrome", **launch_args)
-            except Exception:
-                try:
-                    browser = p.chromium.launch(channel="msedge", **launch_args)
-                except Exception:
-                    browser = p.chromium.launch(**launch_args)
-
-            context = browser.new_context(
-                viewport={"width": 1280, "height": 800},
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                ignore_https_errors=True
-            )
-            page = context.new_page()
-
-            if is_wa:
-                # Specialized Diagnostic Card for WhatsApp-only businesses
-                page.set_content(f"""
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <style>
-                        body {{ margin: 0; background: #0f172a; font-family: 'Segoe UI', system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; color: white; }}
-                        .card {{ background: #1e293b; border: 2px solid #10b981; border-radius: 20px; padding: 45px 55px; max-width: 680px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }}
-                        .icon {{ font-size: 54px; margin-bottom: 15px; }}
-                        h2 {{ margin: 0 0 10px 0; color: #34d399; font-size: 24px; }}
-                        .lead-name {{ font-size: 18px; font-weight: 700; color: #f8fafc; margin-bottom: 15px; }}
-                        .url-box {{ background: rgba(0,0,0,0.3); border: 1px solid #334155; padding: 10px 16px; border-radius: 10px; font-family: monospace; font-size: 13px; color: #a7f3d0; word-break: break-all; margin-bottom: 22px; }}
-                        p {{ font-size: 13.5px; color: #94a3b8; line-height: 1.6; margin: 0 0 15px 0; }}
-                        .highlight {{ background: rgba(16, 185, 129, 0.1); border-left: 4px solid #10b981; padding: 12px 18px; text-align: left; border-radius: 0 10px 10px 0; font-size: 12.5px; color: #e2e8f0; }}
-                    </style>
-                </head>
-                <body>
-                    <div class="card">
-                        <div class="icon">📱</div>
-                        <h2>Canal Direto: Apenas WhatsApp Cadastrado</h2>
-                        <div class="lead-name">{lead_name_escaped}</div>
-                        <div class="url-box">{website}</div>
-                        <p>Esta empresa não possui website corporativo cadastrado no Google Maps; apenas um link direto para o WhatsApp.</p>
-                        <div class="highlight">
-                            <strong>🎯 Argumento Comercial Matador:</strong><br>
-                            A empresa depende 100% de cliques no link do WhatsApp e não possui uma Landing Page de apresentação com catálogo, serviços e autoridade. Excelente alvo para a oferta de R$ 1.000,00!
-                        </div>
-                    </div>
-                </body>
-                </html>
-                """)
-                time.sleep(0.3)
-                page.screenshot(path=filepath, full_page=False)
-            else:
-                load_success = False
-                try:
-                    # Snappy 7-second commit timeout: captures as soon as headers/HTML commit
-                    page.goto(website, timeout=7000, wait_until="commit")
-                    time.sleep(1.2)
-                    page.screenshot(path=filepath, full_page=False)
-                    load_success = True
-                except Exception:
-                    load_success = False
-
-                if not load_success:
-                    # Render visual Diagnostic Error Card for unreachable/offline sites
-                    page.set_content(f"""
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset="utf-8">
-                        <style>
-                            body {{ margin: 0; background: #0f172a; font-family: 'Segoe UI', system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; color: white; }}
-                            .card {{ background: #1e293b; border: 2px solid #ef4444; border-radius: 20px; padding: 45px 55px; max-width: 680px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }}
-                            .icon {{ font-size: 54px; margin-bottom: 15px; }}
-                            h2 {{ margin: 0 0 10px 0; color: #f87171; font-size: 24px; }}
-                            .lead-name {{ font-size: 18px; font-weight: 700; color: #f8fafc; margin-bottom: 15px; }}
-                            .url-box {{ background: rgba(0,0,0,0.3); border: 1px solid #334155; padding: 10px 16px; border-radius: 10px; font-family: monospace; font-size: 13px; color: #fca5a5; word-break: break-all; margin-bottom: 22px; }}
-                            p {{ font-size: 13.5px; color: #94a3b8; line-height: 1.6; margin: 0 0 15px 0; }}
-                            .highlight {{ background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; padding: 12px 18px; text-align: left; border-radius: 0 10px 10px 0; font-size: 12.5px; color: #e2e8f0; }}
-                        </style>
-                    </head>
-                    <body>
-                        <div class="card">
-                            <div class="icon">⚠️</div>
-                            <h2>Site Oficial Inacessível / Fora do Ar</h2>
-                            <div class="lead-name">{lead_name_escaped}</div>
-                            <div class="url-box">{website}</div>
-                            <p>O servidor desta empresa não está respondendo, está fora do ar ou com falha técnica de conexão (DNS / SSL).</p>
-                            <div class="highlight">
-                                <strong>🎯 Argumento Comercial de Fechamento:</strong><br>
-                                "Olá! Liguei porque tentei acessar o site oficial de vocês pelo Google Maps e ele está dando erro de conexão. Vocês sabiam disso? Clientes que pesquisam no Google estão caindo em uma página fora do ar!"
-                            </div>
-                        </div>
-                    </body>
-                    </html>
-                    """)
-                    time.sleep(0.3)
-                    page.screenshot(path=filepath, full_page=False)
-
-            browser.close()
-
-        return jsonify({
-            "success": True,
-            "lead_id": lead_id,
-            "lead_name": lead.get("name"),
-            "website": website,
-            "screenshot_url": rel_url,
-            "cached": False,
-            "cached_at": datetime.now().strftime("%d/%m/%Y %H:%M")
-        })
+        data = screenshot_service.get_screenshot(lead, app.static_folder, force=force_refresh)
+        return jsonify(data)
     except Exception as e:
         return jsonify({
             "success": False,
-            "error": f"Erro no motor de captura: {str(e)}",
-            "website": website
-        })
+            "error": f"Erro ao capturar screenshot: {str(e)}",
+            "lead_id": lead_id,
+            "lead_name": lead.get("name"),
+            "website": lead.get("website") or "Sem site cadastrado"
+        }), 500
 
 
 @app.route("/api/logs", methods=["GET"])

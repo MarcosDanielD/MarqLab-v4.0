@@ -12,7 +12,8 @@ DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nexus_leads.
 
 
 def get_db_connection() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+    # timeout: waits for locks instead of failing immediately when several users write at once
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -20,6 +21,9 @@ def get_db_connection() -> sqlite3.Connection:
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
+
+    # WAL mode: concurrent reads while another user writes (persisted in the DB file)
+    cursor.execute("PRAGMA journal_mode=WAL")
 
     # Campaigns table
     cursor.execute("""
@@ -79,6 +83,26 @@ def init_db():
         cursor.execute("ALTER TABLE leads ADD COLUMN phone_type TEXT DEFAULT 'unknown'")
     if "distance_km" not in existing_cols:
         cursor.execute("ALTER TABLE leads ADD COLUMN distance_km REAL DEFAULT 5.0")
+    if "cnpj" not in existing_cols:
+        cursor.execute("ALTER TABLE leads ADD COLUMN cnpj TEXT")
+    if "cnpj_razao_social" not in existing_cols:
+        cursor.execute("ALTER TABLE leads ADD COLUMN cnpj_razao_social TEXT")
+    if "cnpj_situacao" not in existing_cols:
+        cursor.execute("ALTER TABLE leads ADD COLUMN cnpj_situacao TEXT")
+    if "cnpj_abertura" not in existing_cols:
+        cursor.execute("ALTER TABLE leads ADD COLUMN cnpj_abertura TEXT")
+    if "cnpj_porte" not in existing_cols:
+        cursor.execute("ALTER TABLE leads ADD COLUMN cnpj_porte TEXT")
+    if "cnpj_socios" not in existing_cols:
+        cursor.execute("ALTER TABLE leads ADD COLUMN cnpj_socios TEXT")
+    if "cnpj_capital" not in existing_cols:
+        cursor.execute("ALTER TABLE leads ADD COLUMN cnpj_capital REAL")
+    if "cnpj_cnae" not in existing_cols:
+        cursor.execute("ALTER TABLE leads ADD COLUMN cnpj_cnae TEXT")
+    if "cnpj_regime" not in existing_cols:
+        cursor.execute("ALTER TABLE leads ADD COLUMN cnpj_regime TEXT")
+    if "cnpj_checked_at" not in existing_cols:
+        cursor.execute("ALTER TABLE leads ADD COLUMN cnpj_checked_at TEXT")
 
     # Table: Lead Notes / CRM Interaction History
     cursor.execute("""
@@ -109,6 +133,14 @@ def init_db():
     existing_op_cols = [row[1] for row in cursor.fetchall()]
     if "permission_level" not in existing_op_cols:
         cursor.execute("ALTER TABLE operators ADD COLUMN permission_level TEXT DEFAULT 'SDR'")
+    # Authentication columns (login por e-mail e senha)
+    if "email" not in existing_op_cols:
+        cursor.execute("ALTER TABLE operators ADD COLUMN email TEXT")
+    if "password_hash" not in existing_op_cols:
+        cursor.execute("ALTER TABLE operators ADD COLUMN password_hash TEXT")
+    if "last_login_at" not in existing_op_cols:
+        cursor.execute("ALTER TABLE operators ADD COLUMN last_login_at TEXT")
+    cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_operators_email ON operators(email)")
 
     cursor.execute("INSERT OR IGNORE INTO operators (name, role, permission_level) VALUES ('Jamilly', 'SDR / Closer', 'SDR')")
     cursor.execute("INSERT OR IGNORE INTO operators (name, role, permission_level) VALUES ('Marcos', 'Gestor de Vendas', 'ADMIN')")
@@ -191,6 +223,15 @@ def update_campaign_status(campaign_id: int, status: str, total_found: int = Non
     cursor.execute(sql, params)
     conn.commit()
     conn.close()
+
+
+def get_campaign_by_id(campaign_id: int) -> Optional[Dict[str, Any]]:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM campaigns WHERE id = ?", (campaign_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
 
 
 def save_lead(lead_data: Dict[str, Any]) -> int:
@@ -324,6 +365,7 @@ def get_leads(campaign_id: Optional[int] = None,
               status_filter: Optional[str] = None,
               operator_filter: Optional[str] = None,
               phone_type_filter: Optional[str] = None,
+              cnpj_filter: Optional[str] = None,
               search: Optional[str] = None,
               sort_by: Optional[str] = None,
               limit: int = 500) -> List[Dict[str, Any]]:
@@ -361,10 +403,20 @@ def get_leads(campaign_id: Optional[int] = None,
         query += " AND phone_type = ?"
         params.append(phone_type_filter)
 
+    if cnpj_filter and cnpj_filter != "all":
+        if cnpj_filter == "ativo":
+            query += " AND cnpj_situacao = 'ATIVA'"
+        elif cnpj_filter == "inativo":
+            query += " AND (cnpj_situacao IS NOT NULL AND cnpj_situacao NOT IN ('ATIVA', 'NÃO LOCALIZADO') AND cnpj != 'Não localizado')"
+        elif cnpj_filter == "nao_localizado":
+            query += " AND cnpj_situacao = 'NÃO LOCALIZADO'"
+        elif cnpj_filter == "pendente":
+            query += " AND (cnpj IS NULL OR cnpj = '')"
+
     if search:
         search_param = f"%{search.strip()}%"
-        query += " AND (name LIKE ? OR phone LIKE ? OR address LIKE ? OR website LIKE ? OR notes LIKE ?)"
-        params.extend([search_param, search_param, search_param, search_param, search_param])
+        query += " AND (name LIKE ? OR phone LIKE ? OR address LIKE ? OR website LIKE ? OR notes LIKE ? OR cnpj LIKE ? OR cnpj_razao_social LIKE ? OR cnpj_socios LIKE ?)"
+        params.extend([search_param, search_param, search_param, search_param, search_param, search_param, search_param, search_param])
 
     # Sorting
     if sort_by == "score_desc":
@@ -563,12 +615,75 @@ def get_lead_notes(lead_id: int) -> List[Dict[str, Any]]:
 
 
 def get_operators() -> List[Dict[str, Any]]:
+    """Lists active operators. Never exposes password hashes."""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM operators WHERE active = 1 ORDER BY id ASC")
     rows = cursor.fetchall()
     conn.close()
-    return [dict(r) for r in rows]
+    result = []
+    for r in rows:
+        d = dict(r)
+        d["has_access"] = bool(d.pop("password_hash", None))
+        result.append(d)
+    return result
+
+
+def get_operator_by_id(op_id: int) -> Optional[Dict[str, Any]]:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM operators WHERE id = ? AND active = 1", (op_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_operator_by_email(email: str) -> Optional[Dict[str, Any]]:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM operators WHERE lower(email) = lower(?) AND active = 1", ((email or "").strip(),))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def count_operators_with_access() -> int:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) AS total FROM operators WHERE password_hash IS NOT NULL AND password_hash != ''")
+    total = cursor.fetchone()["total"]
+    conn.close()
+    return total
+
+
+def set_operator_credentials(op_id: int, email: str, password_hash: Optional[str]):
+    """Sets login e-mail and (optionally) a new password hash for an operator."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    if password_hash:
+        cursor.execute("UPDATE operators SET email = ?, password_hash = ? WHERE id = ?",
+                       (email.strip().lower(), password_hash, op_id))
+    else:
+        cursor.execute("UPDATE operators SET email = ? WHERE id = ?", (email.strip().lower(), op_id))
+    conn.commit()
+    conn.close()
+
+
+def set_operator_permission(op_id: int, permission_level: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE operators SET permission_level = ? WHERE id = ?", (permission_level.upper(), op_id))
+    conn.commit()
+    conn.close()
+
+
+def touch_operator_login(op_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE operators SET last_login_at = ? WHERE id = ?",
+                   (datetime.datetime.now().strftime("%d/%m/%Y %H:%M"), op_id))
+    conn.commit()
+    conn.close()
 
 
 def get_operator_by_name(name: str) -> Optional[Dict[str, Any]]:
@@ -581,17 +696,68 @@ def get_operator_by_name(name: str) -> Optional[Dict[str, Any]]:
     return dict(row) if row else None
 
 
-def add_operator(name: str, role: str = "SDR / Closer", permission_level: str = "SDR") -> int:
+def add_operator(name: str, role: str = "SDR / Closer", permission_level: str = "SDR",
+                 email: Optional[str] = None, password_hash: Optional[str] = None) -> int:
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT OR IGNORE INTO operators (name, role, permission_level) VALUES (?, ?, ?)",
-        (name.strip(), role.strip(), permission_level.strip().upper()),
+        """
+        INSERT INTO operators (name, role, permission_level, email, password_hash, active)
+        VALUES (?, ?, ?, ?, ?, 1)
+        """,
+        (name.strip(), role.strip(), permission_level.strip().upper(),
+         email.strip().lower() if email else None, password_hash),
     )
     op_id = cursor.lastrowid
     conn.commit()
     conn.close()
     return op_id
+
+
+def update_operator(op_id: int, name: str, role: str, permission_level: str,
+                    email: Optional[str] = None, password_hash: Optional[str] = None, active: int = 1):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    if password_hash:
+        cursor.execute(
+            """
+            UPDATE operators
+            SET name = ?, role = ?, permission_level = ?, email = ?, password_hash = ?, active = ?
+            WHERE id = ?
+            """,
+            (name.strip(), role.strip(), permission_level.strip().upper(),
+             email.strip().lower() if email else None, password_hash, active, op_id),
+        )
+    else:
+        cursor.execute(
+            """
+            UPDATE operators
+            SET name = ?, role = ?, permission_level = ?, email = ?, active = ?
+            WHERE id = ?
+            """,
+            (name.strip(), role.strip(), permission_level.strip().upper(),
+             email.strip().lower() if email else None, active, op_id),
+        )
+    conn.commit()
+    conn.close()
+
+
+def deactivate_operator(op_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE operators SET active = 0 WHERE id = ?", (op_id,))
+    conn.commit()
+    conn.close()
+
+
+def claim_lead(lead_id: int, operator_name: str) -> bool:
+    """Claims an unassigned lead for an operator."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE leads SET assigned_to = ? WHERE id = ?", (operator_name, lead_id))
+    conn.commit()
+    conn.close()
+    return True
 
 
 def assign_lead(lead_id: int, operator_name: str):
@@ -627,6 +793,41 @@ def get_todays_meetings(operator_name: Optional[str] = None) -> List[Dict[str, A
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def update_lead_cnpj(lead_id: int, cnpj_data: Dict[str, Any]):
+    """Saves enriched CNPJ details, status, and partner names to the lead record."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE leads SET
+            cnpj = :cnpj,
+            cnpj_razao_social = :cnpj_razao_social,
+            cnpj_situacao = :cnpj_situacao,
+            cnpj_abertura = :cnpj_abertura,
+            cnpj_porte = :cnpj_porte,
+            cnpj_socios = :cnpj_socios,
+            cnpj_capital = :cnpj_capital,
+            cnpj_cnae = :cnpj_cnae,
+            cnpj_regime = :cnpj_regime,
+            cnpj_checked_at = :cnpj_checked_at
+        WHERE id = :id
+    """, {
+        "id": lead_id,
+        "cnpj": cnpj_data.get("cnpj_formatted") or cnpj_data.get("cnpj"),
+        "cnpj_razao_social": cnpj_data.get("razao_social"),
+        "cnpj_situacao": cnpj_data.get("situacao_cadastral") or "NÃO LOCALIZADO",
+        "cnpj_abertura": cnpj_data.get("data_inicio_atividade"),
+        "cnpj_porte": cnpj_data.get("porte"),
+        "cnpj_socios": cnpj_data.get("socios_str"),
+        "cnpj_capital": cnpj_data.get("capital_social"),
+        "cnpj_cnae": cnpj_data.get("cnae_fiscal_descricao"),
+        "cnpj_regime": cnpj_data.get("regime"),
+        "cnpj_checked_at": datetime.datetime.now().strftime("%d/%m/%Y %H:%M"),
+    })
+    conn.commit()
+    conn.close()
+
 
 
 

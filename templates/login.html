@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrar - Marq Lab</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap"
+        rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                        brand: ['"Space Grotesk"', 'sans-serif'],
+                    },
+                    colors: {
+                        stone: {
+                            50: '#FAF9F6',
+                            100: '#F5F3EF',
+                            200: '#E8E5DF',
+                            300: '#D6D1C7',
+                            400: '#A8A29E',
+                            500: '#78716C',
+                            600: '#57534E',
+                            700: '#44403C',
+                            800: '#292524',
+                            900: '#1C1917',
+                        },
+                        darkbg: '#141210',
+                        darkcard: '#1C1A17',
+                        darkcard2: '#24211D',
+                        darkborder: '#332E28',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        body {
+            background-color: #FAF9F6;
+        }
+
+        .dark body {
+            background-color: #141210;
+        }
+
+        .login-card {
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+        }
+
+        .dark .login-card {
+            background-color: rgba(28, 26, 23, 0.95);
+        }
+    </style>
+</head>
+
+<body
+    class="min-h-screen flex flex-col justify-between items-center p-4 sm:p-6 text-stone-800 dark:text-stone-100 transition-colors selection:bg-stone-900 selection:text-white">
+
+    <!-- Top Bar: Logo & Theme Switcher -->
+    <header class="w-full max-w-5xl flex items-center justify-between py-2">
+        <div class="flex items-center gap-2">
+            <div
+                class="w-6 h-6 rounded bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 flex items-center justify-center font-bold text-xs font-sans shadow-xs">
+                M
+            </div>
+            <span class="font-bold text-sm tracking-tight text-stone-900 dark:text-white font-brand">
+                Marq Lab
+            </span>
+            <span
+                class="hidden sm:inline-block text-[10px] font-medium px-2 py-0.5 rounded border border-stone-200 dark:border-darkborder bg-[#F5F3EF] dark:bg-darkcard2 text-stone-500">
+                Workspace Comercial
+            </span>
+        </div>
+
+        <button onclick="toggleTheme()" id="themeBtn"
+            class="p-1.5 rounded-lg border border-stone-200 dark:border-darkborder bg-white dark:bg-darkcard text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition"
+            title="Alternar Modo Claro/Escuro">
+            <i id="themeIcon" class="ph-bold ph-moon text-sm"></i>
+        </button>
+    </header>
+
+    <!-- Center Card -->
+    <main class="w-full max-w-sm my-auto">
+        <div class="login-card p-6 sm:p-7 rounded-2xl border border-stone-200/90 dark:border-darkborder shadow-xl space-y-5">
+            <!-- Header -->
+            <div class="space-y-1 text-center">
+                <h1 class="text-base font-bold text-stone-900 dark:text-white tracking-tight">
+                    Acesso à Central de Prospecção
+                </h1>
+                <p class="text-xs text-stone-500 dark:text-stone-400">
+                    Entre com seu e-mail comercial e senha
+                </p>
+            </div>
+
+            <!-- Tab Switcher (Login vs Ativação) -->
+            <div id="tabsContainer" class="flex p-0.5 rounded-lg bg-stone-100 dark:bg-darkcard2 border border-stone-200/80 dark:border-darkborder text-xs font-semibold">
+                <button type="button" onclick="switchTab('login')" id="tabBtnLogin"
+                    class="flex-1 py-1.5 rounded-md text-stone-900 dark:text-white bg-white dark:bg-darkcard shadow-xs transition">
+                    Entrar
+                </button>
+                <button type="button" onclick="switchTab('activate')" id="tabBtnActivate"
+                    class="flex-1 py-1.5 rounded-md text-stone-500 hover:text-stone-900 dark:hover:text-white transition">
+                    Primeiro Acesso
+                </button>
+            </div>
+
+            <!-- Form 1: Standard Login -->
+            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-3.5">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300 flex items-center gap-1">
+                        <i class="ph-bold ph-envelope text-xs text-stone-400"></i>
+                        <span>E-mail ou Usuário</span>
+                    </label>
+                    <input type="text" id="loginIdentifier" required placeholder="seu.email@empresa.com ou nome"
+                        autocomplete="username"
+                        class="w-full px-3 py-2 rounded-lg border border-stone-200 dark:border-darkborder bg-[#FAF9F6] dark:bg-darkbg text-xs text-stone-900 dark:text-white focus:outline-none focus:border-stone-900 dark:focus:border-stone-100 transition">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex items-center justify-between">
+                        <label class="text-[10px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300 flex items-center gap-1">
+                            <i class="ph-bold ph-lock text-xs text-stone-400"></i>
+                            <span>Senha</span>
+                        </label>
+                    </div>
+                    <div class="relative">
+                        <input type="password" id="loginPassword" required placeholder="••••••••"
+                            autocomplete="current-password"
+                            class="w-full pl-3 pr-8 py-2 rounded-lg border border-stone-200 dark:border-darkborder bg-[#FAF9F6] dark:bg-darkbg text-xs text-stone-900 dark:text-white focus:outline-none focus:border-stone-900 dark:focus:border-stone-100 transition font-mono">
+                        <button type="button" onclick="togglePasswordVisibility('loginPassword', this)"
+                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition">
+                            <i class="ph-bold ph-eye text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-0.5 text-xs text-stone-500">
+                    <label class="flex items-center gap-1.5 cursor-pointer select-none">
+                        <input type="checkbox" id="rememberMe" checked
+                            class="rounded border-stone-300 dark:border-darkborder text-stone-900 focus:ring-0">
+                        <span class="text-[11px]">Lembrar de mim</span>
+                    </label>
+                </div>
+
+                <div id="loginError"
+                    class="hidden p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-1.5">
+                    <i class="ph-bold ph-warning-circle shrink-0"></i>
+                    <span id="loginErrorText">E-mail ou senha incorretos.</span>
+                </div>
+
+                <button type="submit" id="loginSubmitBtn"
+                    class="w-full py-2.5 rounded-lg text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer">
+                    <span>Acessar Painel</span>
+                    <i class="ph-bold ph-arrow-right text-xs"></i>
+                </button>
+            </form>
+
+            <!-- Form 2: First-time Activation -->
+            <form id="activateForm" onsubmit="handleActivation(event)" class="space-y-3.5 hidden">
+                <div class="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-amber-900 dark:text-amber-200 text-[11px] leading-relaxed">
+                    Se este é seu primeiro acesso, selecione seu usuário para definir sua senha de acesso.
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+                        Selecione seu Nome
+                    </label>
+                    <select id="activateOperatorId" required onchange="handleOperatorSelect(this.value)"
+                        class="w-full px-3 py-2 rounded-lg border border-stone-200 dark:border-darkborder bg-[#FAF9F6] dark:bg-darkbg text-xs text-stone-900 dark:text-white focus:outline-none cursor-pointer">
+                        <option value="">Carregando membros...</option>
+                    </select>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+                        E-mail Comercial
+                    </label>
+                    <input type="email" id="activateEmail" required placeholder="seu.email@empresa.com"
+                        class="w-full px-3 py-2 rounded-lg border border-stone-200 dark:border-darkborder bg-[#FAF9F6] dark:bg-darkbg text-xs text-stone-900 dark:text-white focus:outline-none">
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+                        Criar Senha (mínimo 6 dígitos)
+                    </label>
+                    <input type="password" id="activatePassword" required minlength="6" placeholder="Nova senha segura"
+                        class="w-full px-3 py-2 rounded-lg border border-stone-200 dark:border-darkborder bg-[#FAF9F6] dark:bg-darkbg text-xs text-stone-900 dark:text-white focus:outline-none font-mono">
+                </div>
+
+                <div id="activateError"
+                    class="hidden p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-1.5">
+                    <i class="ph-bold ph-warning-circle shrink-0"></i>
+                    <span id="activateErrorText">Erro na ativação.</span>
+                </div>
+
+                <button type="submit" id="activateSubmitBtn"
+                    class="w-full py-2.5 rounded-lg text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer">
+                    <i class="ph-bold ph-shield-check text-xs"></i>
+                    <span>Ativar e Entrar</span>
+                </button>
+            </form>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full max-w-sm text-center py-2 text-[11px] text-stone-400">
+        <span>Marq Lab v5.0 • Sistema de Prospecção Privado</span>
+    </footer>
+
+    <script>
+        // Theme initialization
+        function initTheme() {
+            const saved = localStorage.getItem('marq_theme') || 'light';
+            if (saved === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.getElementById('themeIcon').className = 'ph-bold ph-sun text-sm';
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('themeIcon').className = 'ph-bold ph-moon text-sm';
+            }
+        }
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('marq_theme', isDark ? 'dark' : 'light');
+            document.getElementById('themeIcon').className = isDark ? 'ph-bold ph-sun text-sm' : 'ph-bold ph-moon text-sm';
+        }
+        initTheme();
+
+        function togglePasswordVisibility(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'ph-bold ph-eye-slash text-xs';
+            } else {
+                input.type = 'password';
+                icon.className = 'ph-bold ph-eye text-xs';
+            }
+        }
+
+        function switchTab(tab) {
+            const formLogin = document.getElementById('loginForm');
+            const formActivate = document.getElementById('activateForm');
+            const btnLogin = document.getElementById('tabBtnLogin');
+            const btnActivate = document.getElementById('tabBtnActivate');
+
+            if (tab === 'login') {
+                formLogin.classList.remove('hidden');
+                formActivate.classList.add('hidden');
+                btnLogin.className = 'flex-1 py-1.5 rounded-md text-stone-900 dark:text-white bg-white dark:bg-darkcard shadow-xs transition';
+                btnActivate.className = 'flex-1 py-1.5 rounded-md text-stone-500 hover:text-stone-900 dark:hover:text-white transition';
+            } else {
+                formLogin.classList.add('hidden');
+                formActivate.classList.remove('hidden');
+                btnActivate.className = 'flex-1 py-1.5 rounded-md text-stone-900 dark:text-white bg-white dark:bg-darkcard shadow-xs transition';
+                btnLogin.className = 'flex-1 py-1.5 rounded-md text-stone-500 hover:text-stone-900 dark:hover:text-white transition';
+                loadOperatorsForActivation();
+            }
+        }
+
+        let operatorsData = [];
+        async function loadOperatorsForActivation() {
+            try {
+                const res = await fetch('/api/auth/operators_setup');
+                const data = await res.json();
+                if (data.success) {
+                    operatorsData = data.operators || [];
+                    const select = document.getElementById('activateOperatorId');
+                    select.innerHTML = '<option value="">-- Escolha seu nome --</option>' +
+                        operatorsData.map(op => {
+                            const badge = op.has_access ? ' (Senha já cadastrada)' : ' (Pendente ativação)';
+                            return `<option value="${op.id}">${op.name} - ${op.role}${badge}</option>`;
+                        }).join('');
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function handleOperatorSelect(opId) {
+            const op = operatorsData.find(o => String(o.id) === String(opId));
+            if (op && op.email) {
+                document.getElementById('activateEmail').value = op.email;
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('loginSubmitBtn');
+            const errBox = document.getElementById('loginError');
+            const errText = document.getElementById('loginErrorText');
+            errBox.classList.add('hidden');
+
+            const identifier = document.getElementById('loginIdentifier').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const remember = document.getElementById('rememberMe').checked;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-sm"></i><span>Verificando...</span>';
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ identifier, password, remember })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // Redirect to destination or index
+                    const params = new URLSearchParams(window.location.search);
+                    window.location.href = params.get('next') || '/';
+                } else {
+                    errText.innerText = data.error || 'Credenciais inválidas.';
+                    errBox.classList.remove('hidden');
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>Acessar Painel</span><i class="ph-bold ph-arrow-right text-xs"></i>';
+                }
+            } catch (err) {
+                errText.innerText = 'Falha na comunicação com o servidor: ' + err.message;
+                errBox.classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerHTML = '<span>Acessar Painel</span><i class="ph-bold ph-arrow-right text-xs"></i>';
+            }
+        }
+
+        async function handleActivation(e) {
+            e.preventDefault();
+            const btn = document.getElementById('activateSubmitBtn');
+            const errBox = document.getElementById('activateError');
+            const errText = document.getElementById('activateErrorText');
+            errBox.classList.add('hidden');
+
+            const opId = document.getElementById('activateOperatorId').value;
+            const email = document.getElementById('activateEmail').value.trim();
+            const password = document.getElementById('activatePassword').value;
+
+            if (!opId) {
+                errText.innerText = 'Selecione seu nome na lista.';
+                errBox.classList.remove('hidden');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-sm"></i><span>Ativando...</span>';
+
+            try {
+                const res = await fetch('/api/auth/activate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ operator_id: parseInt(opId), email, password })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    window.location.href = '/';
+                } else {
+                    errText.innerText = data.error || 'Erro ao ativar credenciais.';
+                    errBox.classList.remove('hidden');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="ph-bold ph-shield-check text-xs"></i><span>Ativar e Entrar</span>';
+                }
+            } catch (err) {
+                errText.innerText = 'Falha de comunicação: ' + err.message;
+                errBox.classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ph-bold ph-shield-check text-xs"></i><span>Ativar e Entrar</span>';
+            }
+        }
+
+        // Auto-check if any operators need initial setup
+        window.addEventListener('load', async () => {
+            try {
+                const res = await fetch('/api/auth/operators_setup');
+                const data = await res.json();
+                if (data.success && data.has_any_access === false) {
+                    switchTab('activate');
+                }
+            } catch (e) { }
+        });
+    </script>
+</body>
+
+</html>

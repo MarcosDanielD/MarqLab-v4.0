@@ -30,6 +30,9 @@ desktop.ini
 
 # Runtime Screenshots cache
 static/screenshots/*.png
+static/screenshots/*.jpg
+static/screenshots/*.jpeg
+static/screenshots/*.webp
 !static/screenshots/.gitkeep
 
 # Local OneDrive subfolder

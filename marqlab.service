@@ -1,0 +1,23 @@
+[Unit]
+Description=Marq Lab - B2B Growth Engine Web Application
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/marqlab
+Environment="PATH=/var/www/marqlab/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+Environment="MARQ_SECRET_KEY=marqlab-prod-session-key-super-secure-2026-auth"
+Environment="PYTHONUNBUFFERED=1"
+
+# Run Gunicorn with 1 worker and 8 threads to preserve Playwright scraper memory and SQLite WAL concurrency
+ExecStart=/var/www/marqlab/.venv/bin/gunicorn --workers 1 --threads 8 --timeout 300 --bind 127.0.0.1:5000 wsgi:application
+
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

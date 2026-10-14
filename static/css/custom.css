@@ -381,7 +381,7 @@ table thead th {
 
 /* Modals: frosted backdrop + spring-like entrance */
 #scriptModal, #notesModal, #proposalModal, #teamModal,
-#scheduleModal, #screenshotModal, #clearConfirmModal {
+#scheduleModal, #screenshotModal, #cnpjModal, #clearConfirmModal {
     -webkit-backdrop-filter: blur(14px) saturate(140%);
     backdrop-filter: blur(14px) saturate(140%);
     background: rgba(28, 25, 23, 0.32) !important;
@@ -393,6 +393,7 @@ table thead th {
 #teamModal:not(.hidden) .glass-modal,
 #scheduleModal:not(.hidden) .glass-modal,
 #screenshotModal:not(.hidden) .glass-modal,
+#cnpjModal:not(.hidden) .glass-modal,
 #clearConfirmModal:not(.hidden) .glass-modal {
     animation: modalIn 0.32s var(--ease-apple) both;
 }
