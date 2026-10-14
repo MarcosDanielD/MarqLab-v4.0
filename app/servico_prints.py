@@ -15,8 +15,8 @@ import itertools
 from concurrent.futures import Future
 from datetime import datetime
 
-import database
-import pitch_generator
+import banco_dados
+import gerador_propostas
 
 VIEWPORT = {"width": 1280, "height": 800}
 USER_AGENT = (
@@ -180,9 +180,9 @@ def _plan(lead):
     raw = (lead.get("website") or "").strip()
     if not raw:
         return "", "nosite"
-    website = pitch_generator.resolve_google_ad_url(raw)
+    website = gerador_propostas.resolve_google_ad_url(raw)
     if website != raw:
-        database.update_lead_website(lead["id"], website)
+        banco_dados.update_lead_website(lead["id"], website)
         lead["website"] = website
     if not website.startswith(("http://", "https://")):
         website = f"http://{website}"

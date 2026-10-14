@@ -35,5 +35,5 @@ echo ==============================================================
 echo Marq Lab em execucao! Para encerrar, feche esta janela.
 echo ==============================================================
 echo.
-python app.py
+python wsgi.py
 pause

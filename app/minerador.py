@@ -16,9 +16,9 @@ from typing import Dict, Any, List, Optional, Callable
 
 from playwright.sync_api import sync_playwright, Browser, BrowserContext, Page, TimeoutError as PlaywrightTimeoutError
 
-import database
-import auditor
-import pitch_generator
+import banco_dados
+import auditor_sites
+import gerador_propostas
 
 logger = logging.getLogger("NexusScraper")
 logger.setLevel(logging.INFO)
@@ -85,7 +85,7 @@ def run_scraping_worker(niche: str, city: str, target_count: int, campaign_id: i
     Main background worker executing Playwright Google Maps extraction.
     """
     active_scraper.reset(campaign_id, target_count)
-    database.add_log(f"Iniciando varredura para nicho '{niche}' em '{city}'. Meta: {target_count} leads válidos.", "INFO", campaign_id)
+    banco_dados.add_log(f"Iniciando varredura para nicho '{niche}' em '{city}'. Meta: {target_count} leads válidos.", "INFO", campaign_id)
 
     query = f"{niche} em {city}".strip()
     encoded_query = urllib.parse.quote_plus(query)
@@ -117,9 +117,9 @@ def run_scraping_worker(niche: str, city: str, target_count: int, campaign_id: i
 
         try:
             browser = playwright_inst.chromium.launch(channel="chrome", **launch_options)
-            database.add_log("Navegador Google Chrome nativo inicializado com sucesso.", "INFO", campaign_id)
+            banco_dados.add_log("Navegador Google Chrome nativo inicializado com sucesso.", "INFO", campaign_id)
         except Exception as e_chrome:
-            database.add_log(f"Chrome indisponível, tentando Microsoft Edge: {e_chrome}", "WARNING", campaign_id)
+            banco_dados.add_log(f"Chrome indisponível, tentando Microsoft Edge: {e_chrome}", "WARNING", campaign_id)
             browser = playwright_inst.chromium.launch(channel="msedge", **launch_options)
 
         context = browser.new_context(
@@ -132,7 +132,7 @@ def run_scraping_worker(niche: str, city: str, target_count: int, campaign_id: i
         )
         page = context.new_page()
 
-        database.add_log(f"Acessando Google Maps: {query}", "INFO", campaign_id)
+        banco_dados.add_log(f"Acessando Google Maps: {query}", "INFO", campaign_id)
         active_scraper.status_message = f"Pesquisando '{query}' no Google Maps..."
         active_scraper.notify({"type": "status", "message": active_scraper.status_message, "count": qualified_count})
 
@@ -155,7 +155,7 @@ def run_scraping_worker(niche: str, city: str, target_count: int, campaign_id: i
         try:
             page.wait_for_selector(feed_selector, timeout=12000)
         except PlaywrightTimeoutError:
-            database.add_log("Aguardando carregamento da grade de resultados...", "INFO", campaign_id)
+            banco_dados.add_log("Aguardando carregamento da grade de resultados...", "INFO", campaign_id)
 
         scroll_attempts = 0
         max_scroll_attempts = 60
@@ -168,7 +168,7 @@ def run_scraping_worker(niche: str, city: str, target_count: int, campaign_id: i
             if not cards:
                 cards = page.query_selector_all('a.hfpxzc')
 
-            database.add_log(f"Varrendo grade do Google Maps: {len(cards)} empresas visíveis no feed...", "INFO", campaign_id)
+            banco_dados.add_log(f"Varrendo grade do Google Maps: {len(cards)} empresas visíveis no feed...", "INFO", campaign_id)
 
             for card in cards:
                 if qualified_count >= target_count or active_scraper.stop_requested:
@@ -243,7 +243,7 @@ def run_scraping_worker(niche: str, city: str, target_count: int, campaign_id: i
 
                     # Resolve any Google tracking / ad URLs to real destination domain
                     if website:
-                        website = pitch_generator.resolve_google_ad_url(website)
+                        website = gerador_propostas.resolve_google_ad_url(website)
 
                     # Address extraction
                     address = f"{city} - Brasil"
@@ -264,7 +264,7 @@ def run_scraping_worker(niche: str, city: str, target_count: int, campaign_id: i
                         continue  # Ignora leads sem telefone para manter a lista estritamente comercial
 
                     # Website Audit & Diagnosis
-                    audit_res = auditor.audit_website(website)
+                    audit_res = auditor_sites.audit_website(website)
                     qual_status = audit_res["status"]
                     qual_detail = audit_res["detail"]
 
@@ -274,11 +274,11 @@ def run_scraping_worker(niche: str, city: str, target_count: int, campaign_id: i
                         need_modernization_count += 1
 
                     # Lead Score & Growth Script Generation
-                    score, temperature = pitch_generator.calculate_lead_score(
+                    score, temperature = gerador_propostas.calculate_lead_score(
                         qual_status, rating, reviews_count, phone, website or "", audit_res
                     )
 
-                    scripts = pitch_generator.generate_scripts(
+                    scripts = gerador_propostas.generate_scripts(
                         {
                             "name": name,
                             "rating": rating,
@@ -296,7 +296,7 @@ def run_scraping_worker(niche: str, city: str, target_count: int, campaign_id: i
                         "campaign_id": campaign_id,
                         "name": name,
                         "phone": phone,
-                        "clean_phone": pitch_generator.clean_phone_number(phone),
+                        "clean_phone": gerador_propostas.clean_phone_number(phone),
                         "address": address,
                         "rating": rating,
                         "reviews_count": reviews_count,
@@ -312,7 +312,7 @@ def run_scraping_worker(niche: str, city: str, target_count: int, campaign_id: i
                         "whatsapp_script": scripts["whatsapp_script"],
                     }
 
-                    lead_id = database.save_lead(lead_dict)
+                    lead_id = banco_dados.save_lead(lead_dict)
                     qualified_count += 1
                     active_scraper.leads_count = qualified_count
 
@@ -320,7 +320,7 @@ def run_scraping_worker(niche: str, city: str, target_count: int, campaign_id: i
                         f"[{qualified_count}/{target_count}] Lead Qualificado: {name} | "
                         f"Score: {score} ({temperature}) | {qual_status} | Tel: {phone}"
                     )
-                    database.add_log(msg, "SUCCESS", campaign_id)
+                    banco_dados.add_log(msg, "SUCCESS", campaign_id)
                     active_scraper.notify({
                         "type": "new_lead",
                         "lead": {**lead_dict, "id": lead_id, "whatsapp_url": scripts["whatsapp_url"]},
@@ -352,11 +352,11 @@ def run_scraping_worker(niche: str, city: str, target_count: int, campaign_id: i
 
             # Check for end of list banner
             if "Você chegou ao final da lista" in (page.content() or ""):
-                database.add_log("Fim da lista de resultados do Google Maps alcançado para esta região.", "INFO", campaign_id)
+                banco_dados.add_log("Fim da lista de resultados do Google Maps alcançado para esta região.", "INFO", campaign_id)
                 break
 
         final_status = "completed" if qualified_count >= target_count else ("stopped" if active_scraper.stop_requested else "completed")
-        database.update_campaign_status(
+        banco_dados.update_campaign_status(
             campaign_id,
             status=final_status,
             total_found=qualified_count,
@@ -364,7 +364,7 @@ def run_scraping_worker(niche: str, city: str, target_count: int, campaign_id: i
             modernization=need_modernization_count,
         )
         active_scraper.status_message = f"Processamento finalizado. {qualified_count} leads qualificados capturados."
-        database.add_log(active_scraper.status_message, "SUCCESS", campaign_id)
+        banco_dados.add_log(active_scraper.status_message, "SUCCESS", campaign_id)
         active_scraper.notify({
             "type": "finished",
             "count": qualified_count,
@@ -372,9 +372,9 @@ def run_scraping_worker(niche: str, city: str, target_count: int, campaign_id: i
         })
 
     except Exception as e_global:
-        database.add_log(f"Erro na execução da raspagem: {str(e_global)}", "ERROR", campaign_id)
+        banco_dados.add_log(f"Erro na execução da raspagem: {str(e_global)}", "ERROR", campaign_id)
         active_scraper.status_message = f"Erro: {str(e_global)[:60]}"
-        database.update_campaign_status(campaign_id, status="failed", total_found=qualified_count)
+        banco_dados.update_campaign_status(campaign_id, status="failed", total_found=qualified_count)
         active_scraper.notify({"type": "error", "message": str(e_global)})
 
     finally:
@@ -396,8 +396,8 @@ def start_scraping(niche: str, city: str, target_count: int = 100) -> int:
     if active_scraper.is_running:
         raise RuntimeError("Uma raspagem já está em andamento.")
 
-    database.init_db()
-    campaign_id = database.create_campaign(niche, city, target_count)
+    banco_dados.init_db()
+    campaign_id = banco_dados.create_campaign(niche, city, target_count)
     active_scraper.thread = threading.Thread(
         target=run_scraping_worker,
         args=(niche, city, target_count, campaign_id),

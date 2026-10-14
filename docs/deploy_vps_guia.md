@@ -92,10 +92,10 @@ chmod -R 775 /var/www/marqlab
 
 ## 6. Configurar o Serviço Automático (Systemd Daemon)
 
-Copie o arquivo de serviço [marqlab.service](file:///c%3A/Users/est.marcosdrm/OneDrive%20-%20Votorantim/%C3%81rea%20de%20Trabalho/RPA%20Capta%C3%A7%C3%A3o%20de%20Clientes/marqlab.service) para a pasta de serviços do Linux:
+Copie o arquivo de serviço [marqlab.service](file:///c%3A/Users/est.marcosdrm/OneDrive%20-%20Votorantim/%C3%81rea%20de%20Trabalho/RPA%20Capta%C3%A7%C3%A3o%20de%20Clientes/deploy/marqlab.service) para a pasta de serviços do Linux:
 
 ```bash
-cp /var/www/marqlab/marqlab.service /etc/systemd/system/marqlab.service
+cp /var/www/marqlab/deploy/marqlab.service /etc/systemd/system/marqlab.service
 ```
 
 Recarregue o systemd, habilite para iniciar no boot e inicie o serviço:
@@ -116,7 +116,7 @@ systemctl status marqlab
 
 Copie a configuração do Nginx:
 ```bash
-cp /var/www/marqlab/nginx.conf /etc/nginx/sites-available/marqlab.conf
+cp /var/www/marqlab/deploy/nginx.conf /etc/nginx/sites-available/marqlab.conf
 ln -s /etc/nginx/sites-available/marqlab.conf /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 ```
@@ -182,7 +182,7 @@ Toda vez que você der `git push` no seu computador:
 ### Opção B: Atualização Manual em 1 Linha (Sem GitHub Actions)
 Se preferir não configurar chaves no GitHub, sempre que subir alterações pelo computador, basta rodar na VPS:
 ```bash
-/var/www/marqlab/atualizar.sh
+/var/www/marqlab/deploy/atualizar.sh
 ```
 Ou manualmente:
 ```bash

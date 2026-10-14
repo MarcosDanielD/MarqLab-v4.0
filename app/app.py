@@ -5,6 +5,7 @@ Flask application server with SSE streaming, REST API, Chart data, and CRM actio
 """
 
 import os
+import sys
 import io
 import json
 import time
@@ -13,14 +14,23 @@ from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify, Response, send_file, session, redirect, url_for
 import pandas as pd
 
-import database
-import scraper
-import pitch_generator
-import screenshot_service
-import cnpj_service
-import auth
+# Guarantee app directory is in sys.path for local module resolution
+_CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+if _CURRENT_DIR not in sys.path:
+    sys.path.insert(0, _CURRENT_DIR)
 
-app = Flask(__name__)
+import banco_dados
+import minerador
+import gerador_propostas
+import servico_prints
+import servico_cnpj
+import autenticacao
+
+app = Flask(
+    __name__,
+    template_folder=os.path.join(_CURRENT_DIR, "templates"),
+    static_folder=os.path.join(_CURRENT_DIR, "static"),
+)
 app.secret_key = os.environ.get("MARQ_SECRET_KEY", "marq-lab-lead-secret-key-prod-secure-2026")
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
@@ -46,7 +56,7 @@ def sse_event_listener(data):
 
 
 # Register listener to active scraper
-scraper.active_scraper.subscribers.append(sse_event_listener)
+minerador.active_scraper.subscribers.append(sse_event_listener)
 
 
 # ----------------------------------------------------
@@ -54,8 +64,8 @@ scraper.active_scraper.subscribers.append(sse_event_listener)
 # ----------------------------------------------------
 @app.route("/login", methods=["GET"])
 def login_view():
-    database.init_db()
-    if auth.get_current_user():
+    banco_dados.init_db()
+    if autenticacao.get_current_user():
         return redirect(url_for("index"))
     return render_template("login.html")
 
@@ -67,7 +77,7 @@ def api_login():
     password = data.get("password", "")
     remember = data.get("remember", True)
 
-    user = auth.authenticate(identifier, password)
+    user = autenticacao.authenticate(identifier, password)
     if not user:
         return jsonify({"success": False, "error": "E-mail/usuário ou senha incorretos."}), 401
 
@@ -77,7 +87,7 @@ def api_login():
     session["user_email"] = user.get("email")
     session["permission_level"] = user.get("permission_level", "SDR")
 
-    database.add_log(f"Login efetuado com sucesso pelo usuário '{user['name']}' ({user.get('permission_level')}).", "INFO")
+    banco_dados.add_log(f"Login efetuado com sucesso pelo usuário '{user['name']}' ({user.get('permission_level')}).", "INFO")
     return jsonify({"success": True, "user": user})
 
 
@@ -85,7 +95,7 @@ def api_login():
 def api_logout():
     user_name = session.get("user_name", "Usuário")
     session.clear()
-    database.add_log(f"Usuário '{user_name}' encerrou a sessão.", "INFO")
+    banco_dados.add_log(f"Usuário '{user_name}' encerrou a sessão.", "INFO")
     if request.path.startswith("/api/"):
         return jsonify({"success": True, "message": "Sessão encerrada com sucesso."})
     return redirect(url_for("login_view"))
@@ -93,7 +103,7 @@ def api_logout():
 
 @app.route("/api/auth/me", methods=["GET"])
 def api_me():
-    user = auth.get_current_user()
+    user = autenticacao.get_current_user()
     if not user:
         return jsonify({"success": False, "unauthenticated": True}), 401
     return jsonify({"success": True, "user": user})
@@ -102,8 +112,8 @@ def api_me():
 @app.route("/api/auth/operators_setup", methods=["GET"])
 def api_operators_setup():
     """Public helper for first-time onboarding / password activation."""
-    ops = database.get_operators()
-    has_any = database.count_operators_with_access() > 0
+    ops = banco_dados.get_operators()
+    has_any = banco_dados.count_operators_with_access() > 0
     safe_ops = [{"id": o["id"], "name": o["name"], "role": o.get("role", "SDR"), "email": o.get("email"), "has_access": o.get("has_access", False)} for o in ops]
     return jsonify({"success": True, "operators": safe_ops, "has_any_access": has_any})
 
@@ -122,17 +132,17 @@ def api_activate():
     if len(password) < 6:
         return jsonify({"success": False, "error": "A senha deve conter no mínimo 6 caracteres."}), 400
 
-    op = database.get_operator_by_id(op_id)
+    op = banco_dados.get_operator_by_id(op_id)
     if not op:
         return jsonify({"success": False, "error": "Membro não encontrado."}), 404
 
     # Check if email is already taken by another operator
-    existing = database.get_operator_by_email(email)
+    existing = banco_dados.get_operator_by_email(email)
     if existing and existing["id"] != op_id:
         return jsonify({"success": False, "error": "Este e-mail já está em uso por outro membro."}), 400
 
-    pwd_hash = auth.hash_password(password)
-    database.set_operator_credentials(op_id, email, pwd_hash)
+    pwd_hash = autenticacao.hash_password(password)
+    banco_dados.set_operator_credentials(op_id, email, pwd_hash)
 
     # Automatically log the user in
     session.permanent = True
@@ -141,7 +151,7 @@ def api_activate():
     session["user_email"] = email.lower()
     session["permission_level"] = op.get("permission_level", "SDR")
 
-    database.add_log(f"Primeiro acesso/ativação de senha concluído para '{op['name']}' ({email}).", "SUCCESS")
+    banco_dados.add_log(f"Primeiro acesso/ativação de senha concluído para '{op['name']}' ({email}).", "SUCCESS")
     return jsonify({"success": True, "message": "Conta ativada com sucesso!", "user": {
         "id": op["id"],
         "name": op["name"],
@@ -151,10 +161,10 @@ def api_activate():
 
 
 @app.route("/api/presence/ping", methods=["POST"])
-@auth.login_required
+@autenticacao.login_required
 def presence_ping():
     """Heartbeat endpoint for multi-user presence."""
-    user = auth.get_current_user()
+    user = autenticacao.get_current_user()
     now = time.time()
     active_presences[user["id"]] = {
         "id": user["id"],
@@ -172,14 +182,14 @@ def presence_ping():
 # MAIN DASHBOARD VIEW
 # ----------------------------------------------------
 @app.route("/")
-@auth.login_required
+@autenticacao.login_required
 def index():
-    database.init_db()
+    banco_dados.init_db()
     return render_template("index.html")
 
 
 @app.route("/api/scrape/start", methods=["POST"])
-@auth.login_required
+@autenticacao.login_required
 def start_scrape():
     data = request.get_json() or {}
     niche = data.get("niche", "").strip()
@@ -189,11 +199,11 @@ def start_scrape():
     if not niche or not city:
         return jsonify({"success": False, "error": "Informe o Nicho e a Cidade para iniciar a busca."}), 400
 
-    if scraper.active_scraper.is_running:
+    if minerador.active_scraper.is_running:
         return jsonify({"success": False, "error": "Uma extração já está em andamento. Aguarde ou clique em Parar."}), 400
 
     try:
-        campaign_id = scraper.start_scraping(niche, city, target_count)
+        campaign_id = minerador.start_scraping(niche, city, target_count)
         return jsonify({
             "success": True,
             "campaign_id": campaign_id,
@@ -204,24 +214,24 @@ def start_scrape():
 
 
 @app.route("/api/scrape/stop", methods=["POST"])
-@auth.login_required
+@autenticacao.login_required
 def stop_scrape():
-    stopped = scraper.stop_scraping()
+    stopped = minerador.stop_scraping()
     return jsonify({"success": True, "stopped": stopped})
 
 
 @app.route("/api/scrape/status", methods=["GET"])
 def get_scrape_status():
     progress = 0
-    if scraper.active_scraper.target_count > 0:
-        progress = min(100, round((scraper.active_scraper.leads_count / scraper.active_scraper.target_count) * 100, 1))
+    if minerador.active_scraper.target_count > 0:
+        progress = min(100, round((minerador.active_scraper.leads_count / minerador.active_scraper.target_count) * 100, 1))
 
     return jsonify({
-        "is_running": scraper.active_scraper.is_running,
-        "leads_count": scraper.active_scraper.leads_count,
-        "target_count": scraper.active_scraper.target_count,
-        "current_lead": scraper.active_scraper.current_lead_name,
-        "status_message": scraper.active_scraper.status_message,
+        "is_running": minerador.active_scraper.is_running,
+        "leads_count": minerador.active_scraper.leads_count,
+        "target_count": minerador.active_scraper.target_count,
+        "current_lead": minerador.active_scraper.current_lead_name,
+        "status_message": minerador.active_scraper.status_message,
         "progress_percent": progress,
     })
 
@@ -248,7 +258,7 @@ def sse_stream():
 
 
 @app.route("/api/leads", methods=["GET"])
-@auth.login_required
+@autenticacao.login_required
 def list_leads():
     campaign_id = request.args.get("campaign_id", type=int)
     status_filter = request.args.get("status", "all")
@@ -258,7 +268,7 @@ def list_leads():
     sort_by = request.args.get("sort_by", "score_desc")
     cnpj_filter = request.args.get("cnpj_filter", "all")
 
-    leads = database.get_leads(
+    leads = banco_dados.get_leads(
         campaign_id=campaign_id,
         status_filter=status_filter,
         operator_filter=operator_filter,
@@ -271,17 +281,17 @@ def list_leads():
 
     # Attach dynamic whatsapp URL and phone_type detection
     for lead in leads:
-        clean_phone = lead.get("clean_phone") or pitch_generator.clean_phone_number(lead.get("phone", ""))
+        clean_phone = lead.get("clean_phone") or gerador_propostas.clean_phone_number(lead.get("phone", ""))
         lead["whatsapp_url"] = (
-            f"https://wa.me/{clean_phone}?text={pitch_generator.urllib.parse.quote(lead.get('whatsapp_script') or '')}"
+            f"https://wa.me/{clean_phone}?text={gerador_propostas.urllib.parse.quote(lead.get('whatsapp_script') or '')}"
             if clean_phone else ""
         )
         if not lead.get("phone_type") or lead.get("phone_type") == "unknown":
-            lead["phone_type"] = pitch_generator.detect_phone_type(lead.get("phone", ""))
+            lead["phone_type"] = gerador_propostas.detect_phone_type(lead.get("phone", ""))
 
     if leads:
         try:
-            screenshot_service.prefetch(leads[:15], app.static_folder)
+            servico_prints.prefetch(leads[:15], app.static_folder)
         except Exception:
             pass
 
@@ -289,10 +299,10 @@ def list_leads():
 
 
 @app.route("/api/kpis", methods=["GET"])
-@auth.login_required
+@autenticacao.login_required
 def get_dashboard_kpis():
     campaign_id = request.args.get("campaign_id", type=int)
-    kpis = database.get_kpis(campaign_id)
+    kpis = banco_dados.get_kpis(campaign_id)
 
     # Calculate distribution for Chart 1 (Status Distribution)
     status_chart = {
@@ -306,7 +316,7 @@ def get_dashboard_kpis():
     }
 
     # Fetch top leads for Maturity Scatter/Bubble chart
-    all_leads = database.get_leads(campaign_id=campaign_id, limit=100)
+    all_leads = banco_dados.get_leads(campaign_id=campaign_id, limit=100)
     maturity_chart = []
     for l in all_leads:
         maturity_chart.append({
@@ -327,14 +337,14 @@ def get_dashboard_kpis():
 
 
 @app.route("/api/lead/<int:lead_id>/crm_status", methods=["POST"])
-@auth.login_required
+@autenticacao.login_required
 def update_crm_status(lead_id):
-    lead = database.get_lead_by_id(lead_id)
+    lead = banco_dados.get_lead_by_id(lead_id)
     if not lead:
         return jsonify({"success": False, "error": "Lead não encontrado."}), 404
 
-    user = auth.get_current_user()
-    if not auth.can_edit_lead(user, lead):
+    user = autenticacao.get_current_user()
+    if not autenticacao.can_edit_lead(user, lead):
         return jsonify({
             "success": False,
             "error": f"Acesso Negado: Este lead pertence a '{lead.get('assigned_to')}'. Apenas o responsável ou o Gestor podem editá-lo."
@@ -346,10 +356,10 @@ def update_crm_status(lead_id):
 
     # If lead was unassigned, assign to current user
     if not lead.get("assigned_to") or lead.get("assigned_to") in ["unassigned", "Sem Atribuição"]:
-        database.assign_lead(lead_id, user["name"])
+        banco_dados.assign_lead(lead_id, user["name"])
 
-    database.update_lead_crm_status(lead_id, new_status, notes)
-    database.add_log(f"Status do Lead #{lead_id} alterado para '{new_status}' por '{user['name']}'.", "INFO")
+    banco_dados.update_lead_crm_status(lead_id, new_status, notes)
+    banco_dados.add_log(f"Status do Lead #{lead_id} alterado para '{new_status}' por '{user['name']}'.", "INFO")
     broadcast_sse({
         "type": "lead_status_changed",
         "lead_id": lead_id,
@@ -361,28 +371,28 @@ def update_crm_status(lead_id):
 
 
 @app.route("/api/leads/clear", methods=["POST"])
-@auth.admin_required
+@autenticacao.admin_required
 def clear_leads_api():
-    user = auth.get_current_user()
-    database.clear_all_leads()
+    user = autenticacao.get_current_user()
+    banco_dados.clear_all_leads()
     try:
-        screenshot_service.clear_cache(app.static_folder)
+        servico_prints.clear_cache(app.static_folder)
     except Exception:
         pass
-    database.add_log(f"Base de dados de leads limpa pelo administrador '{user['name']}'.", "WARNING")
+    banco_dados.add_log(f"Base de dados de leads limpa pelo administrador '{user['name']}'.", "WARNING")
     broadcast_sse({"type": "database_cleared", "operator": user["name"]})
     return jsonify({"success": True, "message": "Base de leads e histórico limpos com sucesso."})
 
 
 @app.route("/api/lead/<int:lead_id>/schedule", methods=["POST"])
-@auth.login_required
+@autenticacao.login_required
 def schedule_lead_meeting(lead_id):
-    lead = database.get_lead_by_id(lead_id)
+    lead = banco_dados.get_lead_by_id(lead_id)
     if not lead:
         return jsonify({"success": False, "error": "Lead não encontrado."}), 404
 
-    user = auth.get_current_user()
-    if not auth.can_edit_lead(user, lead):
+    user = autenticacao.get_current_user()
+    if not autenticacao.can_edit_lead(user, lead):
         return jsonify({
             "success": False,
             "error": f"Acesso Negado: Este lead pertence a '{lead.get('assigned_to')}'. Apenas o responsável ou o Gestor podem agendar reuniões."
@@ -394,8 +404,8 @@ def schedule_lead_meeting(lead_id):
     if not scheduled_at:
         return jsonify({"success": False, "error": "Informe data e horário do agendamento."}), 400
 
-    database.schedule_meeting(lead_id, scheduled_at, meeting_notes)
-    database.add_log(f"Reunião agendada para o Lead #{lead_id} em {scheduled_at} por '{user['name']}'.", "INFO")
+    banco_dados.schedule_meeting(lead_id, scheduled_at, meeting_notes)
+    banco_dados.add_log(f"Reunião agendada para o Lead #{lead_id} em {scheduled_at} por '{user['name']}'.", "INFO")
     broadcast_sse({
         "type": "meeting_scheduled",
         "lead_id": lead_id,
@@ -407,21 +417,21 @@ def schedule_lead_meeting(lead_id):
 
 
 @app.route("/api/lead/<int:lead_id>/unschedule", methods=["POST"])
-@auth.login_required
+@autenticacao.login_required
 def unschedule_lead_meeting(lead_id):
-    lead = database.get_lead_by_id(lead_id)
+    lead = banco_dados.get_lead_by_id(lead_id)
     if not lead:
         return jsonify({"success": False, "error": "Lead não encontrado."}), 404
 
-    user = auth.get_current_user()
-    if not auth.can_edit_lead(user, lead):
+    user = autenticacao.get_current_user()
+    if not autenticacao.can_edit_lead(user, lead):
         return jsonify({
             "success": False,
             "error": f"Acesso Negado: Este lead pertence a '{lead.get('assigned_to')}'."
         }), 403
 
-    database.unschedule_meeting(lead_id)
-    database.add_log(f"Reunião cancelada/removida para o Lead #{lead_id} por '{user['name']}'.", "INFO")
+    banco_dados.unschedule_meeting(lead_id)
+    banco_dados.add_log(f"Reunião cancelada/removida para o Lead #{lead_id} por '{user['name']}'.", "INFO")
     broadcast_sse({
         "type": "meeting_unscheduled",
         "lead_id": lead_id,
@@ -433,7 +443,7 @@ def unschedule_lead_meeting(lead_id):
 
 @app.route("/api/lead/<int:lead_id>/cnpj", methods=["GET", "POST"])
 def enrich_lead_cnpj_api(lead_id):
-    lead = database.get_lead_by_id(lead_id)
+    lead = banco_dados.get_lead_by_id(lead_id)
     if not lead:
         return jsonify({"success": False, "error": "Lead não encontrado."}), 404
 
@@ -458,17 +468,17 @@ def enrich_lead_cnpj_api(lead_id):
             }
         })
 
-    res = cnpj_service.enrich_lead_cnpj(lead_id)
+    res = servico_cnpj.enrich_lead_cnpj(lead_id)
     return jsonify(res)
 
 
 @app.route("/api/meetings", methods=["GET"])
 def list_meetings():
-    meetings = database.get_scheduled_meetings()
+    meetings = banco_dados.get_scheduled_meetings()
     for m in meetings:
-        clean_phone = m.get("clean_phone") or pitch_generator.clean_phone_number(m.get("phone", ""))
+        clean_phone = m.get("clean_phone") or gerador_propostas.clean_phone_number(m.get("phone", ""))
         m["whatsapp_url"] = (
-            f"https://wa.me/{clean_phone}?text={pitch_generator.urllib.parse.quote(m.get('whatsapp_script') or '')}"
+            f"https://wa.me/{clean_phone}?text={gerador_propostas.urllib.parse.quote(m.get('whatsapp_script') or '')}"
             if clean_phone else ""
         )
     return jsonify({"success": True, "total": len(meetings), "meetings": meetings})
@@ -477,13 +487,13 @@ def list_meetings():
 
 @app.route("/api/lead/<int:lead_id>/script", methods=["GET"])
 def get_lead_script(lead_id):
-    lead = database.get_lead_by_id(lead_id)
+    lead = banco_dados.get_lead_by_id(lead_id)
     if not lead:
         return jsonify({"success": False, "error": "Lead não encontrado"}), 404
 
-    clean_phone = lead.get("clean_phone") or pitch_generator.clean_phone_number(lead.get("phone", ""))
-    scripts = pitch_generator.generate_scripts(lead, niche="sua área", city=lead.get("address", ""))
-    notes = database.get_lead_notes(lead_id)
+    clean_phone = lead.get("clean_phone") or gerador_propostas.clean_phone_number(lead.get("phone", ""))
+    scripts = gerador_propostas.generate_scripts(lead, niche="sua área", city=lead.get("address", ""))
+    notes = banco_dados.get_lead_notes(lead_id)
 
     return jsonify({
         "success": True,
@@ -502,10 +512,10 @@ def get_lead_script(lead_id):
 
 
 @app.route("/api/lead/<int:lead_id>/claim", methods=["POST"])
-@auth.login_required
+@autenticacao.login_required
 def claim_lead_api(lead_id):
-    user = auth.get_current_user()
-    lead = database.get_lead_by_id(lead_id)
+    user = autenticacao.get_current_user()
+    lead = banco_dados.get_lead_by_id(lead_id)
     if not lead:
         return jsonify({"success": False, "error": "Lead não encontrado."}), 404
 
@@ -513,8 +523,8 @@ def claim_lead_api(lead_id):
     if assigned and assigned != user["name"] and user["permission_level"] != "ADMIN":
         return jsonify({"success": False, "error": f"Este lead já está atribuído a '{assigned}'."}), 403
 
-    database.claim_lead(lead_id, user["name"])
-    database.add_log(f"Lead #{lead_id} ({lead['name']}) assumido por '{user['name']}'.", "INFO")
+    banco_dados.claim_lead(lead_id, user["name"])
+    banco_dados.add_log(f"Lead #{lead_id} ({lead['name']}) assumido por '{user['name']}'.", "INFO")
     broadcast_sse({
         "type": "lead_claimed",
         "lead_id": lead_id,
@@ -525,22 +535,22 @@ def claim_lead_api(lead_id):
 
 
 @app.route("/api/lead/<int:lead_id>/assign", methods=["POST"])
-@auth.login_required
+@autenticacao.login_required
 def assign_lead_api(lead_id):
-    user = auth.get_current_user()
+    user = autenticacao.get_current_user()
     data = request.get_json() or {}
     operator = data.get("operator", "Jamilly").strip()
 
-    lead = database.get_lead_by_id(lead_id)
+    lead = banco_dados.get_lead_by_id(lead_id)
     if not lead:
         return jsonify({"success": False, "error": "Lead não encontrado."}), 404
 
     # If SDR tries to reassign someone else's lead, require ADMIN
-    if user["permission_level"] != "ADMIN" and operator != user["name"] and not auth.can_edit_lead(user, lead):
+    if user["permission_level"] != "ADMIN" and operator != user["name"] and not autenticacao.can_edit_lead(user, lead):
         return jsonify({"success": False, "error": "Acesso negado: Apenas gestores podem transferir leads de outros vendedores."}), 403
 
-    database.assign_lead(lead_id, operator)
-    database.add_log(f"Lead #{lead_id} atribuído ao operador '{operator}' por '{user['name']}'.", "INFO")
+    banco_dados.assign_lead(lead_id, operator)
+    banco_dados.add_log(f"Lead #{lead_id} atribuído ao operador '{operator}' por '{user['name']}'.", "INFO")
     broadcast_sse({
         "type": "lead_assigned",
         "lead_id": lead_id,
@@ -552,17 +562,17 @@ def assign_lead_api(lead_id):
 
 
 @app.route("/api/leads/assign_bulk", methods=["POST"])
-@auth.admin_required
+@autenticacao.admin_required
 def assign_leads_bulk_api():
-    user = auth.get_current_user()
+    user = autenticacao.get_current_user()
     data = request.get_json() or {}
     lead_ids = data.get("lead_ids", [])
     operator = data.get("operator", "Jamilly").strip()
     if not lead_ids:
         return jsonify({"success": False, "error": "Nenhum lead selecionado"}), 400
 
-    database.assign_leads_bulk(lead_ids, operator)
-    database.add_log(f"{len(lead_ids)} leads atribuídos a '{operator}' pelo gestor '{user['name']}'.", "INFO")
+    banco_dados.assign_leads_bulk(lead_ids, operator)
+    banco_dados.add_log(f"{len(lead_ids)} leads atribuídos a '{operator}' pelo gestor '{user['name']}'.", "INFO")
     broadcast_sse({
         "type": "leads_bulk_assigned",
         "lead_ids": lead_ids,
@@ -573,15 +583,15 @@ def assign_leads_bulk_api():
 
 
 @app.route("/api/lead/<int:lead_id>/notes", methods=["GET", "POST"])
-@auth.login_required
+@autenticacao.login_required
 def lead_notes_api(lead_id):
-    user = auth.get_current_user()
+    user = autenticacao.get_current_user()
     if request.method == "POST":
-        lead = database.get_lead_by_id(lead_id)
+        lead = banco_dados.get_lead_by_id(lead_id)
         if not lead:
             return jsonify({"success": False, "error": "Lead não encontrado."}), 404
 
-        if not auth.can_edit_lead(user, lead):
+        if not autenticacao.can_edit_lead(user, lead):
             return jsonify({
                 "success": False,
                 "error": f"Acesso negado: Este lead pertence a '{lead.get('assigned_to')}'."
@@ -592,8 +602,8 @@ def lead_notes_api(lead_id):
         if not note_text:
             return jsonify({"success": False, "error": "Texto da anotação vazio."}), 400
 
-        note_id = database.add_lead_note(lead_id, note_text, user["name"])
-        database.add_log(f"Nova anotação registrada no Lead #{lead_id} por '{user['name']}'.", "INFO")
+        note_id = banco_dados.add_lead_note(lead_id, note_text, user["name"])
+        banco_dados.add_log(f"Nova anotação registrada no Lead #{lead_id} por '{user['name']}'.", "INFO")
         broadcast_sse({
             "type": "lead_note_added",
             "lead_id": lead_id,
@@ -601,14 +611,14 @@ def lead_notes_api(lead_id):
         })
         return jsonify({"success": True, "note_id": note_id})
     else:
-        notes = database.get_lead_notes(lead_id)
+        notes = banco_dados.get_lead_notes(lead_id)
         return jsonify({"success": True, "notes": notes})
 
 
 @app.route("/api/operators", methods=["GET", "POST"])
-@auth.login_required
+@autenticacao.login_required
 def operators_api():
-    user = auth.get_current_user()
+    user = autenticacao.get_current_user()
     if request.method == "POST":
         if user["permission_level"] != "ADMIN":
             return jsonify({"success": False, "error": "Acesso negado: Apenas Gestores podem adicionar membros à equipe."}), 403
@@ -624,32 +634,32 @@ def operators_api():
             return jsonify({"success": False, "error": "Nome obrigatório."}), 400
 
         if email:
-            existing = database.get_operator_by_email(email)
+            existing = banco_dados.get_operator_by_email(email)
             if existing:
                 return jsonify({"success": False, "error": "E-mail já cadastrado para outro membro."}), 400
 
-        pwd_hash = auth.hash_password(password) if password else None
-        op_id = database.add_operator(name, role, permission_level, email, pwd_hash)
-        database.add_log(f"Novo membro '{name}' ({permission_level}) adicionado à equipe por '{user['name']}'.", "INFO")
+        pwd_hash = autenticacao.hash_password(password) if password else None
+        op_id = banco_dados.add_operator(name, role, permission_level, email, pwd_hash)
+        banco_dados.add_log(f"Novo membro '{name}' ({permission_level}) adicionado à equipe por '{user['name']}'.", "INFO")
         return jsonify({"success": True, "id": op_id, "name": name, "role": role, "permission_level": permission_level, "email": email})
     else:
-        ops = database.get_operators()
+        ops = banco_dados.get_operators()
         return jsonify({"success": True, "operators": ops})
 
 
 @app.route("/api/operator/<int:op_id>", methods=["PUT", "DELETE"])
-@auth.admin_required
+@autenticacao.admin_required
 def manage_operator_api(op_id):
-    user = auth.get_current_user()
-    op = database.get_operator_by_id(op_id)
+    user = autenticacao.get_current_user()
+    op = banco_dados.get_operator_by_id(op_id)
     if not op:
         return jsonify({"success": False, "error": "Membro não encontrado."}), 404
 
     if request.method == "DELETE":
         if user["id"] == op_id:
             return jsonify({"success": False, "error": "Você não pode desativar seu próprio usuário."}), 400
-        database.deactivate_operator(op_id)
-        database.add_log(f"Membro '{op['name']}' desativado da equipe por '{user['name']}'.", "WARNING")
+        banco_dados.deactivate_operator(op_id)
+        banco_dados.add_log(f"Membro '{op['name']}' desativado da equipe por '{user['name']}'.", "WARNING")
         return jsonify({"success": True, "message": f"Membro '{op['name']}' desativado com sucesso."})
 
     # PUT: update operator
@@ -661,58 +671,58 @@ def manage_operator_api(op_id):
     new_password = data.get("password", "").strip()
 
     if email:
-        existing = database.get_operator_by_email(email)
+        existing = banco_dados.get_operator_by_email(email)
         if existing and existing["id"] != op_id:
             return jsonify({"success": False, "error": "Este e-mail já pertence a outro membro."}), 400
 
-    pwd_hash = auth.hash_password(new_password) if new_password else None
-    database.update_operator(op_id, name, role, perm, email, pwd_hash)
-    database.add_log(f"Dados do membro '{name}' atualizados por '{user['name']}'.", "INFO")
+    pwd_hash = autenticacao.hash_password(new_password) if new_password else None
+    banco_dados.update_operator(op_id, name, role, perm, email, pwd_hash)
+    banco_dados.add_log(f"Dados do membro '{name}' atualizados por '{user['name']}'.", "INFO")
     return jsonify({"success": True, "message": "Membro atualizado com sucesso."})
 
 
 @app.route("/api/meetings/today", methods=["GET"])
 def todays_meetings_api():
     operator = request.args.get("operator", "all")
-    meetings = database.get_todays_meetings(operator)
+    meetings = banco_dados.get_todays_meetings(operator)
     return jsonify({"success": True, "total": len(meetings), "meetings": meetings})
 
 
 @app.route("/lead/<int:lead_id>/proposal_print", methods=["GET"])
 def proposal_print_view(lead_id):
-    lead = database.get_lead_by_id(lead_id)
+    lead = banco_dados.get_lead_by_id(lead_id)
     if not lead:
         return "Lead não encontrado", 404
 
     lead_dict = dict(lead)
     raw_website = lead_dict.get("website") or ""
-    clean_website = pitch_generator.clean_site_display(raw_website)
+    clean_website = gerador_propostas.clean_site_display(raw_website)
     lead_dict["clean_website"] = clean_website
 
-    scripts = pitch_generator.generate_scripts(lead_dict, niche="sua área", city=lead.get("address", ""))
+    scripts = gerador_propostas.generate_scripts(lead_dict, niche="sua área", city=lead.get("address", ""))
     return render_template(
         "proposal_print.html",
         lead=lead_dict,
         clean_website=clean_website,
         scripts=scripts,
         now_date=datetime.now().strftime("%d/%m/%Y"),
-        user_base_address=pitch_generator.USER_BASE_ADDRESS
+        user_base_address=gerador_propostas.USER_BASE_ADDRESS
     )
 
 
 def resolve_google_ad_url(url: str) -> str:
-    return pitch_generator.resolve_google_ad_url(url)
+    return gerador_propostas.resolve_google_ad_url(url)
 
 
 @app.route("/api/lead/<int:lead_id>/screenshot", methods=["GET"])
 def lead_screenshot_api(lead_id):
-    lead = database.get_lead_by_id(lead_id)
+    lead = banco_dados.get_lead_by_id(lead_id)
     if not lead:
         return jsonify({"success": False, "error": "Lead não encontrado."}), 404
 
     force_refresh = request.args.get("refresh", "0") == "1"
     try:
-        data = screenshot_service.get_screenshot(lead, app.static_folder, force=force_refresh)
+        data = servico_prints.get_screenshot(lead, app.static_folder, force=force_refresh)
         return jsonify(data)
     except Exception as e:
         return jsonify({
@@ -726,21 +736,21 @@ def lead_screenshot_api(lead_id):
 
 @app.route("/api/logs", methods=["GET"])
 def get_logs():
-    logs = database.get_recent_logs(limit=40)
+    logs = banco_dados.get_recent_logs(limit=40)
     return jsonify({"success": True, "logs": logs})
 
 
 @app.route("/api/export/excel", methods=["GET"])
 def export_excel():
     campaign_id = request.args.get("campaign_id", type=int)
-    leads = database.get_leads(campaign_id=campaign_id, limit=2000)
+    leads = banco_dados.get_leads(campaign_id=campaign_id, limit=2000)
 
     if not leads:
         return "Nenhum lead disponível para exportação.", 400
 
     df_data = []
     for l in leads:
-        clean_phone = l.get("clean_phone") or pitch_generator.clean_phone_number(l.get("phone", ""))
+        clean_phone = l.get("clean_phone") or gerador_propostas.clean_phone_number(l.get("phone", ""))
         wp_link = f"https://wa.me/{clean_phone}" if clean_phone else ""
         df_data.append({
             "ID": l["id"],
@@ -778,14 +788,14 @@ def export_excel():
 @app.route("/api/export/csv", methods=["GET"])
 def export_csv():
     campaign_id = request.args.get("campaign_id", type=int)
-    leads = database.get_leads(campaign_id=campaign_id, limit=2000)
+    leads = banco_dados.get_leads(campaign_id=campaign_id, limit=2000)
 
     if not leads:
         return "Nenhum lead disponível para exportação.", 400
 
     df_data = []
     for l in leads:
-        clean_phone = l.get("clean_phone") or pitch_generator.clean_phone_number(l.get("phone", ""))
+        clean_phone = l.get("clean_phone") or gerador_propostas.clean_phone_number(l.get("phone", ""))
         df_data.append({
             "Empresa": l["name"],
             "Telefone": l["phone"],
@@ -820,6 +830,6 @@ def export_csv():
 
 
 if __name__ == "__main__":
-    database.init_db()
+    banco_dados.init_db()
     print("Iniciando Nexus Lead Pro em http://127.0.0.1:5000 ...")
     app.run(host="127.0.0.1", port=5000, debug=False)

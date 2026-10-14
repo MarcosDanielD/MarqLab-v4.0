@@ -15,7 +15,7 @@ import urllib.parse
 import unicodedata
 from typing import Dict, Any, Optional, List
 
-import database
+import banco_dados
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -281,7 +281,7 @@ def enrich_lead_cnpj(lead_id: int) -> Dict[str, Any]:
     Core function: Takes a lead_id, finds their CNPJ, verifies official status,
     extracts company owners/partners, and updates the database record.
     """
-    lead = database.get_lead_by_id(lead_id)
+    lead = banco_dados.get_lead_by_id(lead_id)
     if not lead:
         return {"success": False, "error": "Lead não encontrado."}
 
@@ -291,7 +291,7 @@ def enrich_lead_cnpj(lead_id: int) -> Dict[str, Any]:
 
     # If city not in address, check campaign city
     if not city and lead.get("campaign_id"):
-        campaign = database.get_campaign_by_id(lead["campaign_id"])
+        campaign = banco_dados.get_campaign_by_id(lead["campaign_id"])
         if campaign and campaign.get("city"):
             raw_city = campaign["city"]
             city = raw_city.split("-")[0].strip() if "-" in raw_city else raw_city.strip()
@@ -308,13 +308,13 @@ def enrich_lead_cnpj(lead_id: int) -> Dict[str, Any]:
                 continue
 
             # Save in database
-            database.update_lead_cnpj(lead_id, details)
+            banco_dados.update_lead_cnpj(lead_id, details)
             
             # Log action
             status_cad = details.get("situacao_cadastral", "ATIVA")
             log_type = "SUCCESS" if status_cad == "ATIVA" else "WARNING"
             status_desc = "ATIVA" if status_cad == "ATIVA" else f"INATIVA ({status_cad})"
-            database.add_log(
+            banco_dados.add_log(
                 f"CNPJ do Lead #{lead_id} ({lead_name}) identificado: {details.get('cnpj_formatted')} - Status: {status_desc}.",
                 log_type
             )
@@ -339,8 +339,8 @@ def enrich_lead_cnpj(lead_id: int) -> Dict[str, Any]:
         "capital_social": 0.0,
         "regime": "Não identificado",
     }
-    database.update_lead_cnpj(lead_id, not_found_data)
-    database.add_log(f"Busca de CNPJ para o Lead #{lead_id} ({lead_name}) concluída: Registro público não localizado.", "INFO")
+    banco_dados.update_lead_cnpj(lead_id, not_found_data)
+    banco_dados.add_log(f"Busca de CNPJ para o Lead #{lead_id} ({lead_name}) concluída: Registro público não localizado.", "INFO")
 
     return {
         "success": False,

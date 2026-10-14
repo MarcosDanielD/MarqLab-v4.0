@@ -1,73 +1,101 @@
-# 🚀 NEXUS LEAD PRO // B2B Growth Engine
-> Robô profissional de prospecção ativa no Google Maps, qualificação técnica de presença web e CRM comercial focado na venda de **Landing Pages e Modernização de Sites por R$ 1.000,00**.
+# 🚀 MARQ LAB // B2B Growth Engine & Gestão de Vendas
+> Plataforma unificada multiusuário para prospecção ativa de leads no Google Maps, auditoria técnica web, consulta automática de CNPJ (ReceitaWS/BrasilAPI), geração de propostas e CRM comercial em tempo real.
 
 ---
 
-## 📸 Demonstração Visual da Interface
+## 📁 Estrutura de Pastas e Arquivos
 
-| Dark Mode Executivo | Light Mode Minimalista Clean |
-| :---: | :---: |
-| ![Dark Mode](dashboard_preview.png) | ![Light Mode](light_preview.png) |
+O projeto está organizado segundo o padrão modular em português:
 
----
-
-## 🎯 Arquitetura da Solução
-
-O sistema foi arquitetado em conformidade com as melhores práticas de Engenharia de Software e Growth Hacking B2B, dividido em 4 módulos principais:
-
-### 1. Motor de Raspagem Stealth (`scraper.py`)
-- **Alvo**: Google Maps (`https://www.google.com/maps/search/...`)
-- **Driver**: Playwright integrado diretamente ao **Google Chrome nativo** do sistema operacional, contornando bloqueios de proxy corporativo e CAPTCHAs.
-- **Scroll Inteligente**: Varre o feed de resultados dinamicamente até atingir exatamente o lote definido (ex: 50 ou 100 leads).
-- **Filtro de Telefone Válido**: Requisito mandatório — descarta empresas sem telefone/WhatsApp, garantindo 100% de leads acionáveis para o SDR/vendedor.
-
-### 2. Auditor Técnico de Sites (`auditor.py`)
-- Se **'Website' estiver VAZIO** ➔ Classificado como `🚨 Prioridade Crítica: Sem Site`.
-- Se **'Website' estiver PREENCHIDO** ➔ Executa auditoria técnica em tempo real com os seguintes critérios:
-  * Ausência de `<meta name="viewport">` (layout quebrado/não responsivo em smartphones).
-  * Ausência de certificado SSL válido (site inseguro HTTP em vez de HTTPS).
-  * Erros de disponibilidade (Status HTTP 404, 500, 502, 503).
-  * Tempo de carregamento excessivo (> 4.5s) e tags de tecnologias legadas.
-  * Classificado como `⚡ Oportunidade: Modernização de Site`.
-
-### 3. Lead Scoring & Copywriting de Conversão (`pitch_generator.py`)
-- **Lead Score (0 a 100)**: Cruza **Volume de Avaliações** + **Nota no Google Maps** + **Falha Web** + **Telefone Válido**. Empresas com muitas avaliações (alto tráfego local) e sem site recebem nota 90-100 (`🔥 Super Quente`).
-- **Gerador de Roteiro de Cold Call**: Cria dinamicamente a quebra de gelo parabenizando pela nota e avaliações reais, aponta a dor da perda de clientes no celular e apresenta a oferta fechada de Landing Page por **R$ 1.000,00**, com tratamento de 3 objeções frequentes.
-- **Botão WhatsApp Web 1-Clique**: Gera link direto `https://wa.me/55...` com a copy persuasiva preenchida para iniciar contato imediato.
-
-### 4. Dashboard Web & CRM Comercial (`app.py`, `templates/`, `static/`)
-- Desenvolvido com **Flask + Tailwind CSS + Chart.js + Phosphor Icons**.
-- **Dual Theme**: Alternância instantânea entre Dark Mode e Light Mode.
-- **Streaming ao Vivo (SSE)**: Barra de progresso animada e feed de logs do terminal em tempo real.
-- **Gestão de Funil CRM**: Status interativos (*Novo, Contatado, Em Negociação, Fechado R$ 1.000, Perdido*).
-- **Exportação 1-Clique**: Relatórios completos em Excel (`.xlsx`) e CSV com compatibilidade Windows Excel (UTF-8 BOM).
+```text
+RPA Captação de Clientes/
+├── app/                        # Núcleo da Aplicação Web
+│   ├── templates/              # Páginas HTML (login, dashboard, proposta)
+│   ├── static/                 # CSS customizado, JavaScript e screenshots em cache
+│   ├── app.py                  # Servidor Flask, rotas REST e streaming SSE
+│   ├── banco_dados.py          # Conexão SQLite (WAL), queries, migrações e histórico
+│   ├── minerador.py            # Robô Playwright Stealth para busca no Google Maps
+│   ├── auditor_sites.py        # Auditor técnico de velocidade, SSL e responsividade
+│   ├── gerador_propostas.py    # Algoritmo de Lead Scoring e copywriter persuasivo
+│   ├── servico_cnpj.py         # Consulta de CNPJ, Razão Social, CNAE e Sócios
+│   ├── servico_prints.py       # Captura automatizada de screenshots dos sites
+│   ├── autenticacao.py         # Criptografia de senhas, sessões e permissões SDR/Admin
+│   ├── wsgi.py                 # Ponto de entrada WSGI interno
+│   └── __init__.py             # Inicializador de pacote Python
+├── deploy/                     # Configurações para Produção em VPS Linux
+│   ├── nginx.conf              # Reverse proxy Nginx com cache e proxy SSE
+│   ├── marqlab.service         # Serviço Systemd para inicialização automática
+│   └── atualizar.sh            # Script rápido de git pull + restart
+├── docs/                       # Documentação
+│   └── deploy_vps_guia.md      # Manual passo a passo para Hospedagem VPS
+├── .github/workflows/          # Automação CI/CD
+│   └── deploy.yml              # Deploy contínuo no servidor via Git Push
+├── iniciar_sistema.bat         # Atalho de execução rápida no Windows
+├── wsgi.py                     # Entrypoint raiz compatível com Gunicorn / Waitress
+├── Procfile                    # Comando de deploy para plataformas Cloud
+├── nexus_leads.db              # Banco de dados SQLite de produção (modo WAL)
+├── requirements.txt            # Dependências Python do ecossistema
+└── README.md                   # Esta documentação
+```
 
 ---
 
-## ⚡ Como Executar o Sistema
+## 🎯 Principais Funcionalidades
 
-### Opção 1: Pelo Atalho Rápido (Recomendado)
-Basta dar dois cliques no arquivo:
+### 1. 🔍 Robô de Prospecção Stealth (`app/minerador.py`)
+- Varredura de nicho e localização geográfica no Google Maps.
+- Detecção e higienização automática de telefones (Fixos, Celulares e WhatsApp).
+- Filtragem de leads sem presença digital ou com sites legados/obsoletos.
+
+### 2. 🏛️ Consulta Inteligente de CNPJ (`app/servico_cnpj.py`)
+- Busca automática de dados oficiais da empresa via **BrasilAPI / ReceitaWS**:
+  * Razão Social e Nome Fantasia
+  * Situação Cadastral (Ativa / Inapta)
+  * Capital Social e Porte da Empresa
+  * Data de Abertura e CNAE Principal
+  * Quadro de Sócios e Administradores (QSA) para contato direto com tomadores de decisão.
+
+### 3. ⚡ Auditoria Técnica de Presença Web (`app/auditor_sites.py`)
+- Verificação de ausência de `<meta name="viewport">` (layouts que não cabem no celular).
+- Detecção de certificado de segurança SSL ausente ou expirado (HTTP inseguro).
+- Medição de tempo de resposta e erros de servidor (404, 500, etc.).
+
+### 4. 👥 Gestão Multiusuário e Sincronização em Tempo Real (`app/autenticacao.py` + SSE)
+- Autenticação individual por login e senha criptografada (**scrypt**).
+- Gestão de permissões: **SDR** (focado no funil de atendimento) e **ADMIN** (gestão global e auditoria).
+- Sincronização em tempo real entre todos os operadores conectados via **Server-Sent Events (SSE)**.
+- Indicador de presença e operadores online em tempo real.
+
+### 5. 📸 Visualizador de Prints dos Sites (`app/servico_prints.py`)
+- Robô Playwright em background para registrar prints instantâneos das páginas dos leads.
+- Cache inteligente local para navegação ultra-rápida no CRM.
+
+---
+
+## ⚡ Como Iniciar o Sistema Localmente
+
+### Pelo Atalho Rápido (Windows)
+Dê um duplo clique no arquivo:
 ```cmd
 iniciar_sistema.bat
 ```
-O script ativará o ambiente virtual `.venv` e abrirá seu navegador padrão em `http://127.0.0.1:5000`.
+O script ativará o ambiente virtual `.venv`, verificará dependências e abrirá `http://127.0.0.1:5000` no seu navegador padrão.
 
-### Opção 2: Pelo Terminal
+### Pelo Terminal
 ```powershell
-# Ativar ambiente virtual
+# Ativar o ambiente virtual
 .\.venv\Scripts\activate
 
 # Iniciar o servidor
-python app.py
+python wsgi.py
 ```
-Acesse no seu navegador: `http://127.0.0.1:5000`
+
+Acesse no navegador: **http://127.0.0.1:5000**
 
 ---
 
-## 💼 Scripts Comerciais Integrados
+## 🌐 Hospedagem em Servidor VPS (Nuvem)
 
-Cada lead capturado possui seu modal individual com:
-1. **Script de Ligação (Cold Call)** pronto para leitura na tela com variáveis dinâmicas da empresa.
-2. **Mensagem de WhatsApp** personalizada com emojis e copy de alto impacto.
-3. Botão para abrir o WhatsApp Web diretamente com o texto digitado.
+Para colocar o sistema online e acessível de qualquer lugar 24/7 com domínio próprio e HTTPS:
+- Consulte o guia completo e detalhado em [deploy_vps_guia.md](file:///c:/Users/est.marcosdrm/OneDrive%20-%20Votorantim/Área de Trabalho/RPA Captação de Clientes/docs/deploy_vps_guia.md).
+- Os arquivos prontos para Nginx e Systemd estão na pasta [deploy/](file:///c:/Users/est.marcosdrm/OneDrive%20-%20Votorantim/Área de Trabalho/RPA Captação de Clientes/deploy).

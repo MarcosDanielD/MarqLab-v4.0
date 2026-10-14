@@ -8,7 +8,7 @@ from typing import Optional, Dict, Any
 from flask import session, request, redirect, url_for, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 
-import database
+import banco_dados
 
 
 def hash_password(password: str) -> str:
@@ -33,10 +33,10 @@ def authenticate(identifier: str, password: str) -> Optional[Dict[str, Any]]:
         return None
 
     # Check by email first
-    op = database.get_operator_by_email(clean_id)
+    op = banco_dados.get_operator_by_email(clean_id)
     # If not found by email, check by name
     if not op:
-        op = database.get_operator_by_name(clean_id)
+        op = banco_dados.get_operator_by_name(clean_id)
 
     if not op:
         return None
@@ -46,7 +46,7 @@ def authenticate(identifier: str, password: str) -> Optional[Dict[str, Any]]:
         return None
 
     if verify_password(password, pwd_hash):
-        database.touch_operator_login(op["id"])
+        banco_dados.touch_operator_login(op["id"])
         # Do not leak hash
         op_dict = dict(op)
         op_dict.pop("password_hash", None)
@@ -60,7 +60,7 @@ def get_current_user() -> Optional[Dict[str, Any]]:
     user_id = session.get("user_id")
     if not user_id:
         return None
-    op = database.get_operator_by_id(user_id)
+    op = banco_dados.get_operator_by_id(user_id)
     if op and op.get("active") == 1:
         op_dict = dict(op)
         op_dict.pop("password_hash", None)

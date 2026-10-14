@@ -8,7 +8,11 @@ import sqlite3
 import datetime
 from typing import List, Dict, Any, Optional
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nexus_leads.db")
+# Look for database at project root (parent of app/) or fallback to local directory or env var
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_root_db = os.path.join(BASE_DIR, "nexus_leads.db")
+_app_db = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nexus_leads.db")
+DB_PATH = os.getenv("DATABASE_PATH", _root_db if os.path.exists(_root_db) or not os.path.exists(_app_db) else _app_db)
 
 
 def get_db_connection() -> sqlite3.Connection:
@@ -163,7 +167,7 @@ def init_db():
     cursor.execute("SELECT id, phone FROM leads WHERE phone_type IS NULL OR phone_type = 'unknown' OR phone_type = ''")
     rows_to_update = cursor.fetchall()
     if rows_to_update:
-        import pitch_generator
+        import gerador_propostas as pitch_generator
         for r in rows_to_update:
             ptype = pitch_generator.detect_phone_type(r["phone"])
             cursor.execute("UPDATE leads SET phone_type = ? WHERE id = ?", (ptype, r["id"]))
@@ -172,7 +176,7 @@ def init_db():
     cursor.execute("SELECT id, address, maps_url FROM leads WHERE distance_km IS NULL OR distance_km = 0")
     dist_to_update = cursor.fetchall()
     if dist_to_update:
-        import pitch_generator
+        import gerador_propostas as pitch_generator
         for d in dist_to_update:
             d_km = pitch_generator.estimate_distance_from_address(d["address"], d["maps_url"] or "")
             cursor.execute("UPDATE leads SET distance_km = ? WHERE id = ?", (d_km, d["id"]))
@@ -248,7 +252,7 @@ def save_lead(lead_data: Dict[str, Any]) -> int:
         conn.close()
         return existing["id"]
 
-    import pitch_generator
+    import gerador_propostas as pitch_generator
     phone_type = lead_data.get("phone_type") or pitch_generator.detect_phone_type(lead_data.get("phone", ""))
     assigned_to = lead_data.get("assigned_to") or "Jamilly"
     distance_km = float(lead_data.get("distance_km") or pitch_generator.estimate_distance_from_address(lead_data.get("address", ""), lead_data.get("maps_url", "")))
