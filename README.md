@@ -72,16 +72,24 @@ RPA Captação de Clientes/
 
 ---
 
-## ⚡ Como Iniciar o Sistema Localmente
+## ⚡ Como Iniciar o Sistema Localmente (Modo Aplicativo Desktop)
 
-### Pelo Atalho Rápido (Windows)
+### 1. Criar Atalho na Área de Trabalho (Recomendado para o Operador/Jamilly)
 Dê um duplo clique no arquivo:
+```cmd
+criar_atalho_desktop.bat
+```
+Isso criará um ícone oficial **"Marq Lab"** na Área de Trabalho do Windows. Ao clicar nele:
+- O servidor iniciará automaticamente em segundo plano.
+- O sistema abrirá em uma **janela limpa e dedicada (Modo App nativo)**, sem abas de navegador ou barra de URLs, parecendo um software desktop executável (`.exe`).
+
+### 2. Pelo Arquivo de Inicialização
+Você também pode simplesmente dar duplo clique em:
 ```cmd
 iniciar_sistema.bat
 ```
-O script ativará o ambiente virtual `.venv`, verificará dependências e abrirá `http://127.0.0.1:5000` no seu navegador padrão.
 
-### Pelo Terminal
+### 3. Pelo Terminal
 ```powershell
 # Ativar o ambiente virtual
 .\.venv\Scripts\activate
@@ -89,7 +97,6 @@ O script ativará o ambiente virtual `.venv`, verificará dependências e abrir�
 # Iniciar o servidor
 python wsgi.py
 ```
-
 Acesse no navegador: **http://127.0.0.1:5000**
 
 ---

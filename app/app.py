@@ -60,6 +60,17 @@ minerador.active_scraper.subscribers.append(sse_event_listener)
 
 
 # ----------------------------------------------------
+# STATIC ASSETS & FAVICON
+# ----------------------------------------------------
+@app.route("/favicon.ico")
+def favicon():
+    fav_path = os.path.join(app.static_folder, "favicon.ico")
+    if os.path.exists(fav_path):
+        return send_file(fav_path, mimetype="image/x-icon")
+    return ("", 204)
+
+
+# ----------------------------------------------------
 # AUTHENTICATION & SESSION ROUTES
 # ----------------------------------------------------
 @app.route("/login", methods=["GET"])
