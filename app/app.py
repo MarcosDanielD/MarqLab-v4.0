@@ -7,6 +7,7 @@ Flask application server with SSE streaming, REST API, Chart data, and CRM actio
 import os
 import sys
 import io
+import re
 import json
 import time
 import queue
@@ -25,6 +26,8 @@ import gerador_propostas
 import servico_prints
 import servico_cnpj
 import autenticacao
+import servico_radar_cnpj
+import servico_instagram
 
 app = Flask(
     __name__,
@@ -34,6 +37,12 @@ app = Flask(
 app.secret_key = os.environ.get("MARQ_SECRET_KEY", "marq-lab-lead-secret-key-prod-secure-2026")
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
+
+# Ensure schema migrations run immediately on app startup
+try:
+    banco_dados.init_db()
+except Exception as _e:
+    print(f"Warning: init_db on startup encountered: {_e}")
 
 # Queue for Server-Sent Events (SSE)
 sse_queues = []
@@ -838,6 +847,166 @@ def export_csv():
         as_attachment=True,
         mimetype="text/csv"
     )
+
+
+# ----------------------------------------------------
+# RADAR DE CNPJS RECÉM-ABERTOS
+# ----------------------------------------------------
+@app.route("/api/radar_cnpj/scan", methods=["POST"])
+@autenticacao.login_required
+def api_radar_cnpj_scan():
+    """Busca empresas recém-abertas por UF, Cidade e Nicho."""
+    data = request.get_json() or {}
+    uf = data.get("uf", "SP").strip()
+    cidade = data.get("cidade", "Sorocaba").strip()
+    nicho = data.get("nicho", "").strip()
+    periodo_dias = int(data.get("periodo_dias", 90))
+    limite = min(int(data.get("limite", 20)), 50)
+
+    try:
+        empresas = servico_radar_cnpj.escanear_cnpjs_recentes(
+            uf=uf, cidade=cidade, nicho=nicho, periodo_dias=periodo_dias, limite=limite
+        )
+        return jsonify({
+            "success": True,
+            "total": len(empresas),
+            "empresas": empresas,
+            "parametros": {"uf": uf, "cidade": cidade, "nicho": nicho, "periodo_dias": periodo_dias}
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Erro no escaneamento de CNPJs: {str(e)}"}), 500
+
+
+@app.route("/api/radar_cnpj/import", methods=["POST"])
+@autenticacao.login_required
+def api_radar_cnpj_import():
+    """Importa uma empresa do radar de CNPJ diretamente para a Central de Leads."""
+    data = request.get_json() or {}
+    curr_user = autenticacao.get_current_user() or {}
+    operator_name = curr_user.get("name") or "Jamilly"
+
+    lead_data = {
+        "name": data.get("razao_social") or data.get("nome_fantasia") or "Nova Empresa",
+        "phone": data.get("phone") or "",
+        "clean_phone": data.get("clean_phone") or "",
+        "address": f"{data.get('logradouro', '')}, {data.get('bairro', '')} - {data.get('municipio', '')}/{data.get('uf', '')}".strip(", -/"),
+        "rating": 5.0,
+        "reviews_count": 0,
+        "website": "",
+        "maps_url": "",
+        "qualification_status": "🚨 Nova Empresa: Sem Site",
+        "qualification_detail": f"Empresa recém-aberta ({data.get('tag_tempo', 'Recém-Inaugurada')}). CNAE: {data.get('cnae', '')}",
+        "lead_score": int(data.get("lead_score") or 95),
+        "lead_temperature": data.get("lead_temperature") or "🔥 Super Quente",
+        "assigned_to": operator_name,
+        "cnpj": data.get("cnpj") or "",
+        "cnpj_razao_social": data.get("razao_social") or "",
+        "cnpj_situacao": data.get("situacao") or "ATIVA",
+        "cnpj_abertura": data.get("data_abertura") or "",
+        "cnpj_porte": data.get("porte") or "",
+        "cnpj_socios": data.get("socios") or "",
+        "cnpj_cnae": data.get("cnae") or "",
+        "cnpj_regime": data.get("regime") or "",
+        "lead_origin": "cnpj_novo",
+        "cold_call_script": data.get("cold_call_script") or "",
+        "whatsapp_script": data.get("whatsapp_script") or "",
+    }
+
+    try:
+        lead_id = banco_dados.import_custom_lead(lead_data)
+        banco_dados.add_lead_note(lead_id, operator_name, f"Importado via Radar de CNPJ Recém-Aberto ({data.get('tag_tempo', '')}).")
+        broadcast_sse({
+            "type": "lead_imported",
+            "lead_id": lead_id,
+            "origin": "cnpj_novo",
+            "name": lead_data["name"],
+            "operator": operator_name
+        })
+        return jsonify({"success": True, "lead_id": lead_id, "message": "Empresa importada para a Central de Leads com sucesso!"})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Erro ao importar lead: {str(e)}"}), 500
+
+
+# ----------------------------------------------------
+# AUDITOR DE PERFIS E LINKS NO INSTAGRAM
+# ----------------------------------------------------
+@app.route("/api/instagram/scan", methods=["POST"])
+@autenticacao.login_required
+def api_instagram_scan():
+    """Busca e audita perfis do Instagram e seus links na bio."""
+    data = request.get_json() or {}
+    cidade = data.get("cidade", "Sorocaba").strip()
+    nicho = data.get("nicho", "Dentista").strip()
+    limite = min(int(data.get("limite", 15)), 40)
+
+    try:
+        perfis = servico_instagram.escanear_perfis_instagram(cidade=cidade, nicho=nicho, limite=limite)
+        quebrados = sum(1 for p in perfis if p.get("link_categoria") == "quebrado")
+        sem_link = sum(1 for p in perfis if p.get("link_categoria") in ["sem_link", "apenas_whatsapp", "linktree"])
+        ativos = sum(1 for p in perfis if p.get("link_categoria") == "ativo")
+
+        return jsonify({
+            "success": True,
+            "total": len(perfis),
+            "stats": {
+                "quebrados": quebrados,
+                "sem_link_ou_linktree": sem_link,
+                "ativos": ativos
+            },
+            "perfis": perfis,
+            "parametros": {"cidade": cidade, "nicho": nicho}
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Erro na auditoria do Instagram: {str(e)}"}), 500
+
+
+@app.route("/api/instagram/import", methods=["POST"])
+@autenticacao.login_required
+def api_instagram_import():
+    """Importa um perfil do Instagram auditado diretamente para a Central de Leads."""
+    data = request.get_json() or {}
+    curr_user = autenticacao.get_current_user() or {}
+    operator_name = curr_user.get("name") or "Jamilly"
+
+    link_diag = data.get("link_diagnostico") or ""
+    diag_cat = data.get("link_categoria") or "sem_link"
+    qual_status = "🚨 Instagram: Link Quebrado" if diag_cat == "quebrado" else ("⚡ Instagram: Sem Site Próprio" if diag_cat in ["sem_link", "linktree", "apenas_whatsapp"] else "Instagram: Lead Qualificado")
+
+    lead_data = {
+        "name": data.get("nome") or data.get("handle") or "Perfil Instagram",
+        "phone": data.get("phone") or "",
+        "clean_phone": "".join(re.findall(r"\d", data.get("phone") or "")),
+        "address": f"{data.get('cidade', '')} (Instagram @{data.get('handle_raw', '')})",
+        "rating": 5.0,
+        "reviews_count": 0,
+        "website": data.get("link_bio") or "",
+        "maps_url": data.get("instagram_url") or f"https://www.instagram.com/{data.get('handle_raw', '')}/",
+        "qualification_status": qual_status,
+        "qualification_detail": f"Instagram @{data.get('handle_raw', '')} | Diagnóstico do Link: {link_diag}. {data.get('link_detalhe', '')}",
+        "lead_score": int(data.get("lead_score") or 95),
+        "lead_temperature": "🔥 Crítico (Link Quebrado)" if diag_cat == "quebrado" else "Alta Prioridade",
+        "assigned_to": operator_name,
+        "lead_origin": "instagram",
+        "instagram_handle": data.get("handle") or "",
+        "link_bio": data.get("link_bio") or "",
+        "link_bio_status": link_diag,
+        "cold_call_script": data.get("cold_call_script") or "",
+        "whatsapp_script": data.get("whatsapp_script") or "",
+    }
+
+    try:
+        lead_id = banco_dados.import_custom_lead(lead_data)
+        banco_dados.add_lead_note(lead_id, operator_name, f"Importado via Auditor Instagram ({data.get('handle', '')} - {link_diag}).")
+        broadcast_sse({
+            "type": "lead_imported",
+            "lead_id": lead_id,
+            "origin": "instagram",
+            "name": lead_data["name"],
+            "operator": operator_name
+        })
+        return jsonify({"success": True, "lead_id": lead_id, "message": "Perfil importado para a Central de Leads com sucesso!"})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Erro ao importar lead: {str(e)}"}), 500
 
 
 if __name__ == "__main__":

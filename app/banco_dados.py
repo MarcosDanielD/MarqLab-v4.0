@@ -4,6 +4,7 @@ Manages SQLite persistence, campaigns, leads, logs, and CRM status updates.
 """
 
 import os
+import re
 import sqlite3
 import datetime
 from typing import List, Dict, Any, Optional
@@ -107,6 +108,14 @@ def init_db():
         cursor.execute("ALTER TABLE leads ADD COLUMN cnpj_regime TEXT")
     if "cnpj_checked_at" not in existing_cols:
         cursor.execute("ALTER TABLE leads ADD COLUMN cnpj_checked_at TEXT")
+    if "lead_origin" not in existing_cols:
+        cursor.execute("ALTER TABLE leads ADD COLUMN lead_origin TEXT DEFAULT 'maps'")
+    if "instagram_handle" not in existing_cols:
+        cursor.execute("ALTER TABLE leads ADD COLUMN instagram_handle TEXT")
+    if "link_bio" not in existing_cols:
+        cursor.execute("ALTER TABLE leads ADD COLUMN link_bio TEXT")
+    if "link_bio_status" not in existing_cols:
+        cursor.execute("ALTER TABLE leads ADD COLUMN link_bio_status TEXT")
 
     # Table: Lead Notes / CRM Interaction History
     cursor.execute("""
@@ -300,6 +309,98 @@ def save_lead(lead_data: Dict[str, Any]) -> int:
     conn.commit()
     conn.close()
     return lead_id
+
+
+def import_custom_lead(lead_data: Dict[str, Any]) -> int:
+    """
+    Imports a lead discovered through external sources like Radar CNPJ or Instagram.
+    Prevents duplicates and generates appropriate scripts if missing.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    name = lead_data.get("name") or "Empresa"
+    phone = lead_data.get("phone") or ""
+    cnpj = lead_data.get("cnpj") or ""
+
+    # Check duplicate by name or phone or cnpj
+    cursor.execute(
+        "SELECT id FROM leads WHERE (name = ? AND name != '') OR (phone != '' AND phone = ?) OR (cnpj != '' AND cnpj = ?)",
+        (name, phone, cnpj if cnpj else "___NONE___")
+    )
+    existing = cursor.fetchone()
+    if existing:
+        conn.close()
+        return existing["id"]
+
+    import gerador_propostas as pitch_generator
+    phone_type = lead_data.get("phone_type") or (pitch_generator.detect_phone_type(phone) if phone else "WhatsApp")
+    assigned_to = lead_data.get("assigned_to") or "Jamilly"
+    distance_km = float(lead_data.get("distance_km") or 5.0)
+
+    clean_digits = "".join(re.findall(r"\d", phone)) if phone else ""
+
+    cursor.execute(
+        """
+        INSERT INTO leads (
+            campaign_id, name, phone, clean_phone, address, rating, reviews_count,
+            website, maps_url, qualification_status, qualification_detail,
+            lead_score, lead_temperature, crm_status, notes,
+            assigned_to, phone_type, distance_km,
+            cnpj, cnpj_razao_social, cnpj_situacao, cnpj_abertura, cnpj_porte,
+            cnpj_socios, cnpj_cnae, cnpj_regime,
+            lead_origin, instagram_handle, link_bio, link_bio_status,
+            cold_call_script, whatsapp_script, created_at
+        ) VALUES (
+            :campaign_id, :name, :phone, :clean_phone, :address, :rating, :reviews_count,
+            :website, :maps_url, :qualification_status, :qualification_detail,
+            :lead_score, :lead_temperature, :crm_status, :notes,
+            :assigned_to, :phone_type, :distance_km,
+            :cnpj, :cnpj_razao_social, :cnpj_situacao, :cnpj_abertura, :cnpj_porte,
+            :cnpj_socios, :cnpj_cnae, :cnpj_regime,
+            :lead_origin, :instagram_handle, :link_bio, :link_bio_status,
+            :cold_call_script, :whatsapp_script, CURRENT_TIMESTAMP
+        )
+        """,
+        {
+            "campaign_id": lead_data.get("campaign_id"),
+            "name": name,
+            "phone": phone,
+            "clean_phone": lead_data.get("clean_phone") or clean_digits,
+            "address": lead_data.get("address", ""),
+            "rating": float(lead_data.get("rating") or 5.0),
+            "reviews_count": int(lead_data.get("reviews_count") or 0),
+            "website": lead_data.get("website", ""),
+            "maps_url": lead_data.get("maps_url", ""),
+            "qualification_status": lead_data.get("qualification_status", "Lead Qualificado"),
+            "qualification_detail": lead_data.get("qualification_detail", ""),
+            "lead_score": int(lead_data.get("lead_score") or 90),
+            "lead_temperature": lead_data.get("lead_temperature", "Alta Prioridade"),
+            "crm_status": "Novo",
+            "notes": lead_data.get("notes", ""),
+            "assigned_to": assigned_to,
+            "phone_type": phone_type,
+            "distance_km": distance_km,
+            "cnpj": cnpj,
+            "cnpj_razao_social": lead_data.get("cnpj_razao_social", ""),
+            "cnpj_situacao": lead_data.get("cnpj_situacao", "ATIVA"),
+            "cnpj_abertura": lead_data.get("cnpj_abertura", ""),
+            "cnpj_porte": lead_data.get("cnpj_porte", ""),
+            "cnpj_socios": lead_data.get("cnpj_socios", ""),
+            "cnpj_cnae": lead_data.get("cnpj_cnae", ""),
+            "cnpj_regime": lead_data.get("cnpj_regime", ""),
+            "lead_origin": lead_data.get("lead_origin", "manual"),
+            "instagram_handle": lead_data.get("instagram_handle", ""),
+            "link_bio": lead_data.get("link_bio", ""),
+            "link_bio_status": lead_data.get("link_bio_status", ""),
+            "cold_call_script": lead_data.get("cold_call_script", ""),
+            "whatsapp_script": lead_data.get("whatsapp_script", ""),
+        }
+    )
+    new_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return new_id
 
 
 def update_lead_crm_status(lead_id: int, crm_status: str, notes: Optional[str] = None):

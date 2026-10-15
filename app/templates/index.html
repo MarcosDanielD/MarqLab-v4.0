@@ -57,11 +57,11 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="/static/css/custom.css?v=5.5">
+    <link rel="stylesheet" href="/static/css/custom.css?v=5.8">
 </head>
 
 <body
-    class="bg-[#FAF9F6] dark:bg-darkbg text-stone-800 dark:text-stone-100 min-h-screen transition-colors duration-200 font-sans selection:bg-stone-900 selection:text-white">
+    class="bg-[#FAF9F6] dark:bg-darkbg text-stone-800 dark:text-stone-100 min-h-screen transition-colors duration-200 font-sans">
 
     <!-- MOBILE BACKDROP -->
     <div id="sidebarBackdrop" onclick="toggleSidebarCollapse()"
@@ -70,7 +70,7 @@
     <!-- LEFT SIDEBAR (Menu Lateral Esquerdo Fixo / Recolhível) -->
     <!-- ============================================================ -->
     <aside id="sidebarLeft"
-        class="sidebar-left fixed top-0 left-0 bottom-0 w-52 bg-white dark:bg-darkcard border-r border-stone-200 dark:border-darkborder z-50 flex flex-col justify-between p-3 shadow-sm lg:shadow-none select-none">
+        class="sidebar-left fixed top-0 left-0 bottom-0 w-56 bg-white dark:bg-darkcard border-r border-stone-200 dark:border-darkborder z-50 flex flex-col justify-between p-3 shadow-sm lg:shadow-none">
 
         <!-- Top Section: Brand + Active Operator + Nav Links -->
         <div class="space-y-3">
@@ -121,7 +121,8 @@
                             Carregando...
                         </div>
                         <div class="flex items-center gap-1 mt-0.5">
-                            <span id="sidebarOperatorRole" class="text-[10px] text-stone-500 dark:text-stone-400 truncate">
+                            <span id="sidebarOperatorRole"
+                                class="text-[10px] text-stone-500 dark:text-stone-400 truncate">
                                 Operador
                             </span>
                             <span id="sidebarOperatorRoleBadge"
@@ -136,13 +137,33 @@
             <!-- Navigation Items - Compact, Clean, Editorial -->
             <nav class="space-y-0.5">
                 <button onclick="switchView('mineracao')" id="sideNavMineracao" class="sidebar-nav-item active">
-                    <i class="ph-bold ph-radar text-stone-700 dark:text-stone-300"></i>
-                    <span>Mineração Maps</span>
+                    <i class="ph-bold ph-map-pin text-stone-700 dark:text-stone-300"></i>
+                    <span class="whitespace-nowrap">Mineração Maps</span>
+                </button>
+
+                <button onclick="switchView('radar_cnpj')" id="sideNavRadarCnpj" class="sidebar-nav-item">
+                    <i class="ph-bold ph-buildings text-stone-700 dark:text-stone-300"></i>
+                    <span class="whitespace-nowrap">Radar CNPJ</span>
+                    <span
+                        class="ml-auto px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 flex items-center gap-1 uppercase tracking-wide">
+                        <i class="ph-bold ph-sparkle text-[9px]"></i>
+                        <span>Novo</span>
+                    </span>
+                </button>
+
+                <button onclick="switchView('instagram')" id="sideNavInstagram" class="sidebar-nav-item">
+                    <i class="ph-bold ph-instagram-logo text-stone-700 dark:text-stone-300"></i>
+                    <span class="whitespace-nowrap">Auditor Insta</span>
+                    <span
+                        class="ml-auto px-1.5 py-0.5 rounded text-[8px] font-bold bg-rose-100 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 flex items-center gap-1 uppercase tracking-wide">
+                        <i class="ph-bold ph-link text-[9px]"></i>
+                        <span>Links</span>
+                    </span>
                 </button>
 
                 <button onclick="switchView('prospeccao')" id="sideNavProspeccao" class="sidebar-nav-item">
                     <i class="ph-bold ph-users-three text-stone-700 dark:text-stone-300"></i>
-                    <span>Central de Leads</span>
+                    <span class="whitespace-nowrap">Central de Leads</span>
                     <span id="sideLeadsCount"
                         class="ml-auto px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-stone-200/80 dark:bg-darkborder text-stone-700 dark:text-stone-300">0</span>
                 </button>
@@ -203,7 +224,7 @@
     <!-- ============================================================ -->
     <!-- MAIN CONTENT WRAPPER (Preenche todo o lado direito) -->
     <!-- ============================================================ -->
-    <div id="mainWrapper" class="main-wrapper lg:pl-52 flex flex-col min-h-screen">
+    <div id="mainWrapper" class="main-wrapper lg:pl-56 flex flex-col min-h-screen">
 
         <!-- Top App Header -->
         <header
@@ -243,7 +264,8 @@
                     class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F5F3EF] dark:bg-darkcard border border-stone-200 dark:border-darkborder text-xs text-stone-700 dark:text-stone-300 font-medium">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
                     <span class="text-stone-400">Operador:</span>
-                    <span id="headerOperatorName" class="font-semibold text-stone-900 dark:text-white">Carregando...</span>
+                    <span id="headerOperatorName"
+                        class="font-semibold text-stone-900 dark:text-white">Carregando...</span>
                     <span id="headerOperatorPermBadge"
                         class="ml-0.5 px-1 py-0.2 rounded text-[9px] font-bold bg-stone-200 dark:bg-darkcard2 text-stone-700 dark:text-stone-300 border border-stone-300 dark:border-darkborder uppercase">SDR</span>
                 </div>
@@ -406,16 +428,47 @@
                 </section>
 
                 <!-- Shortcut Cards to Other Views -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <div onclick="switchView('prospeccao')"
                         class="glass-panel p-3.5 rounded-xl cursor-pointer hover:border-stone-400 transition space-y-1.5 group">
                         <div
                             class="w-7 h-7 rounded bg-[#F5F3EF] dark:bg-darkcard2 text-stone-700 dark:text-stone-300 flex items-center justify-center transition">
                             <i class="ph-bold ph-users-three text-sm"></i>
                         </div>
-                        <h3 class="font-semibold text-xs text-stone-900 dark:text-white">Central de Leads Minerados</h3>
-                        <p class="text-[11px] text-stone-500 dark:text-stone-400">Acesse a tabela consolidada com
-                            filtros, propostas e WhatsApp.</p>
+                        <h3 class="font-semibold text-xs text-stone-900 dark:text-white">Central de Leads</h3>
+                        <p class="text-[11px] text-stone-500 dark:text-stone-400">Tabela consolidada com filtros,
+                            propostas e WhatsApp.</p>
+                    </div>
+
+                    <div onclick="switchView('radar_cnpj')"
+                        class="glass-panel p-3.5 rounded-xl cursor-pointer hover:border-amber-400 transition space-y-1.5 group border-amber-200/40 dark:border-amber-900/30">
+                        <div
+                            class="w-7 h-7 rounded bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 flex items-center justify-center transition">
+                            <i class="ph-bold ph-buildings text-sm"></i>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <h3 class="font-semibold text-xs text-stone-900 dark:text-white">Radar CNPJ Novos</h3>
+                            <span
+                                class="px-1 py-0.2 rounded text-[8px] font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 uppercase">Oceano
+                                Azul</span>
+                        </div>
+                        <p class="text-[11px] text-stone-500 dark:text-stone-400">Empresas abertas nos últimos 30-90
+                            dias com Sócios e Telefones.</p>
+                    </div>
+
+                    <div onclick="switchView('instagram')"
+                        class="glass-panel p-3.5 rounded-xl cursor-pointer hover:border-rose-400 transition space-y-1.5 group border-rose-200/40 dark:border-rose-900/30">
+                        <div
+                            class="w-7 h-7 rounded bg-rose-100 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 flex items-center justify-center transition">
+                            <i class="ph-bold ph-instagram-logo text-sm"></i>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <h3 class="font-semibold text-xs text-stone-900 dark:text-white">Auditor Instagram</h3>
+                            <span
+                                class="px-1 py-0.2 rounded text-[8px] font-bold bg-rose-100 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 uppercase">404</span>
+                        </div>
+                        <p class="text-[11px] text-stone-500 dark:text-stone-400">Auditoria em tempo real de links na
+                            bio e domínios fora do ar.</p>
                     </div>
 
                     <div onclick="switchView('agenda')"
@@ -424,24 +477,186 @@
                             class="w-7 h-7 rounded bg-[#F5F3EF] dark:bg-darkcard2 text-stone-700 dark:text-stone-300 flex items-center justify-center transition">
                             <i class="ph-bold ph-calendar-check text-sm"></i>
                         </div>
-                        <h3 class="font-semibold text-xs text-stone-900 dark:text-white">Agenda de Reuniões</h3>
-                        <p class="text-[11px] text-stone-500 dark:text-stone-400">Visualize calls marcadas para
-                            apresentação da Landing Page de R$ 1.000.</p>
-                    </div>
-
-                    <div onclick="switchView('metricas')"
-                        class="glass-panel p-3.5 rounded-xl cursor-pointer hover:border-stone-400 transition space-y-1.5 group">
-                        <div
-                            class="w-7 h-7 rounded bg-[#F5F3EF] dark:bg-darkcard2 text-stone-700 dark:text-stone-300 flex items-center justify-center transition">
-                            <i class="ph-bold ph-chart-line-up text-sm"></i>
-                        </div>
-                        <h3 class="font-semibold text-xs text-stone-900 dark:text-white">Funil Comercial & Métricas</h3>
+                        <h3 class="font-semibold text-xs text-stone-900 dark:text-white">Agenda & Métricas</h3>
+                        <p class="text-[11px] text-stone-500 dark:text-stone-400">Calls marcadas e conversão do funil de
+                            vendas R$ 1.000.</p>
                     </div>
                 </div>
             </div>
 
             <!-- ============================================================ -->
-            <!-- MENU 2: CENTRAL DE LEADS (TABELA COMPLETA & FILTROS) -->
+            <!-- MENU 2: RADAR DE CNPJS RECÉM-ABERTOS -->
+            <!-- ============================================================ -->
+            <div id="viewRadarCnpj" class="hidden space-y-4">
+                <section class="glass-panel p-5 sm:p-6 rounded-xl relative overflow-hidden">
+                    <div class="flex items-center gap-2.5 mb-4">
+                        <div
+                            class="w-7 h-7 rounded bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 flex items-center justify-center">
+                            <i class="ph-bold ph-buildings text-base"></i>
+                        </div>
+                        <div>
+                            <h2
+                                class="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                                <span>Radar de Empresas Recém-Abertas (CNPJ)</span>
+                                <span
+                                    class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 uppercase">Oceano
+                                    Azul</span>
+                            </h2>
+                            <p class="text-[11px] text-stone-500 dark:text-stone-400">
+                                Descubra novos negócios registrados na Receita Federal nos últimos 30 a 90 dias com
+                                Sócios e Telefones. Quem acabou de abrir empresa precisa de site urgente!
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Search Form -->
+                    <form onsubmit="handleRadarCnpjScan(event)"
+                        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-stone-500">Estado
+                                (UF)</label>
+                            <select id="radarUf"
+                                class="w-full px-3 py-2 rounded-lg border border-stone-200 dark:border-darkborder bg-[#FAF9F6] dark:bg-darkbg text-xs text-stone-900 dark:text-white font-medium">
+                                <option value="SP" selected>SP - São Paulo</option>
+                                <option value="PR">PR - Paraná</option>
+                                <option value="RJ">RJ - Rio de Janeiro</option>
+                                <option value="MG">MG - Minas Gerais</option>
+                                <option value="SC">SC - Santa Catarina</option>
+                                <option value="RS">RS - Rio Grande do Sul</option>
+                                <option value="GO">GO - Goiás</option>
+                                <option value="BA">BA - Bahia</option>
+                            </select>
+                        </div>
+
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-stone-500">Cidade</label>
+                            <input type="text" id="radarCidade" value="Sorocaba" required
+                                placeholder="Ex: Sorocaba, Votorantim"
+                                class="w-full px-3 py-2 rounded-lg border border-stone-200 dark:border-darkborder bg-[#FAF9F6] dark:bg-darkbg text-xs text-stone-900 dark:text-white font-medium">
+                        </div>
+
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-stone-500">Nicho /
+                                Ramo</label>
+                            <input type="text" id="radarNicho" placeholder="Ex: Odontologia, Restaurante, Advocacia"
+                                class="w-full px-3 py-2 rounded-lg border border-stone-200 dark:border-darkborder bg-[#FAF9F6] dark:bg-darkbg text-xs text-stone-900 dark:text-white font-medium">
+                        </div>
+
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-stone-500">Período de
+                                Abertura</label>
+                            <select id="radarPeriodo"
+                                class="w-full px-3 py-2 rounded-lg border border-stone-200 dark:border-darkborder bg-[#FAF9F6] dark:bg-darkbg text-xs text-stone-900 dark:text-white font-medium">
+                                <option value="30">Últimos 30 dias (Mais quentes)</option>
+                                <option value="60" selected>Últimos 60 dias</option>
+                                <option value="90">Últimos 90 dias</option>
+                                <option value="180">Últimos 6 meses</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" id="btnRadarScan"
+                            class="w-full py-2 px-3 rounded-lg bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer">
+                            <i class="ph-bold ph-magnifying-glass"></i>
+                            <span id="btnRadarScanText">Escanear CNPJs</span>
+                        </button>
+                    </form>
+                </section>
+
+                <!-- Radar Results Area -->
+                <div id="radarResultsContainer" class="space-y-3">
+                    <div
+                        class="glass-panel p-8 text-center rounded-xl space-y-2 border border-dashed border-stone-300 dark:border-darkborder">
+                        <i class="ph-bold ph-sparkle text-3xl text-amber-500/80"></i>
+                        <h3 class="font-bold text-xs text-stone-800 dark:text-stone-200">Nenhum escaneamento executado
+                        </h3>
+                        <p class="text-[11px] text-stone-500 max-w-md mx-auto">
+                            Selecione a cidade e nicho acima e clique em <b>"Escanear CNPJs"</b> para buscar as empresas
+                            mais novas da sua região direto na Receita Federal com Sócios e Telefones.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- MENU 3: AUDITOR DE LINKS E INSTAGRAM LOCAL -->
+            <!-- ============================================================ -->
+            <div id="viewInstagram" class="hidden space-y-4">
+                <section class="glass-panel p-5 sm:p-6 rounded-xl relative overflow-hidden">
+                    <div class="flex items-center gap-2.5 mb-4">
+                        <div
+                            class="w-7 h-7 rounded bg-rose-100 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 flex items-center justify-center">
+                            <i class="ph-bold ph-instagram-logo text-base"></i>
+                        </div>
+                        <div>
+                            <h2
+                                class="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                                <span>Auditor de Links na Bio do Instagram</span>
+                                <span
+                                    class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-100 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 uppercase">Alta
+                                    Conversão</span>
+                            </h2>
+                            <p class="text-[11px] text-stone-500 dark:text-stone-400">
+                                Encontre empresas locais no Instagram e audite o link na bio em tempo real. Identifique
+                                links 404 quebrados, sites fora do ar e linktrees genéricos para fechar a Landing Page
+                                de R$ 1.000.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Search Form -->
+                    <form onsubmit="handleInstagramScan(event)"
+                        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-stone-500">Nicho /
+                                Ramo</label>
+                            <input type="text" id="instaNicho" value="Dentista" required
+                                placeholder="Ex: Dentista, Estética, Pizzaria, Arquiteto"
+                                class="w-full px-3 py-2 rounded-lg border border-stone-200 dark:border-darkborder bg-[#FAF9F6] dark:bg-darkbg text-xs text-stone-900 dark:text-white font-medium">
+                        </div>
+
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-stone-500">Cidade</label>
+                            <input type="text" id="instaCidade" value="Sorocaba" required
+                                placeholder="Ex: Sorocaba, Campinas"
+                                class="w-full px-3 py-2 rounded-lg border border-stone-200 dark:border-darkborder bg-[#FAF9F6] dark:bg-darkbg text-xs text-stone-900 dark:text-white font-medium">
+                        </div>
+
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-stone-500">Limite de
+                                Perfis</label>
+                            <select id="instaLimite"
+                                class="w-full px-3 py-2 rounded-lg border border-stone-200 dark:border-darkborder bg-[#FAF9F6] dark:bg-darkbg text-xs text-stone-900 dark:text-white font-medium">
+                                <option value="10">10 perfis</option>
+                                <option value="15" selected>15 perfis</option>
+                                <option value="25">25 perfis</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" id="btnInstaScan"
+                            class="w-full py-2 px-3 rounded-lg bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer">
+                            <i class="ph-bold ph-magnifying-glass"></i>
+                            <span id="btnInstaScanText">Auditar Links do Instagram</span>
+                        </button>
+                    </form>
+                </section>
+
+                <!-- Instagram Results Area -->
+                <div id="instaResultsContainer" class="space-y-3">
+                    <div
+                        class="glass-panel p-8 text-center rounded-xl space-y-2 border border-dashed border-stone-300 dark:border-darkborder">
+                        <i class="ph-bold ph-link-break text-3xl text-rose-500/80"></i>
+                        <h3 class="font-bold text-xs text-stone-800 dark:text-stone-200">Nenhum perfil auditado ainda
+                        </h3>
+                        <p class="text-[11px] text-stone-500 max-w-md mx-auto">
+                            Digite o nicho e cidade acima para escanear os perfis comerciais e testar a saúde de cada
+                            link na bio em tempo real.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- MENU 4: CENTRAL DE LEADS (TABELA COMPLETA & FILTROS) -->
             <!-- ============================================================ -->
             <div id="viewProspeccao" class="hidden space-y-4">
                 <!-- Compact Counters Bar -->
@@ -492,7 +707,8 @@
                             <button onclick="enrichAllVisibleCnpjs()"
                                 class="px-2.5 py-1.5 rounded-md text-[11px] font-medium border border-stone-200 dark:border-darkborder bg-white dark:bg-darkcard text-stone-700 dark:text-stone-300 hover:border-stone-400 transition flex items-center gap-1"
                                 title="Consultar CNPJ, Situação na Receita e Sócios dos leads">
-                                <i class="ph-bold ph-identification-card text-xs text-stone-600 dark:text-stone-400"></i>
+                                <i
+                                    class="ph-bold ph-identification-card text-xs text-stone-600 dark:text-stone-400"></i>
                                 <span>Buscar CNPJs</span>
                             </button>
                             <button onclick="confirmClearLeads()"
@@ -1229,15 +1445,19 @@
         <div class="glass-modal max-w-xl w-full p-5 sm:p-6 rounded-xl shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between border-b border-stone-200 dark:border-darkborder pb-3">
                 <div class="flex items-center gap-2">
-                    <div class="w-7 h-7 rounded bg-stone-100 dark:bg-darkcard2 text-stone-700 dark:text-stone-300 flex items-center justify-center">
+                    <div
+                        class="w-7 h-7 rounded bg-stone-100 dark:bg-darkcard2 text-stone-700 dark:text-stone-300 flex items-center justify-center">
                         <i class="ph-bold ph-identification-card text-base"></i>
                     </div>
                     <div>
-                        <h4 class="font-bold text-sm text-stone-900 dark:text-white" id="cnpjModalTitle">Raio-X do CNPJ</h4>
-                        <p class="text-[11px] text-stone-500 font-mono" id="cnpjModalSubtitle">Dados Oficiais da Receita Federal</p>
+                        <h4 class="font-bold text-sm text-stone-900 dark:text-white" id="cnpjModalTitle">Raio-X do CNPJ
+                        </h4>
+                        <p class="text-[11px] text-stone-500 font-mono" id="cnpjModalSubtitle">Dados Oficiais da Receita
+                            Federal</p>
                     </div>
                 </div>
-                <button onclick="closeCnpjModal()" class="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition">
+                <button onclick="closeCnpjModal()"
+                    class="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition">
                     <i class="ph-bold ph-x text-base"></i>
                 </button>
             </div>
@@ -1250,11 +1470,13 @@
             <div class="pt-2 flex items-center justify-between border-t border-stone-200 dark:border-darkborder">
                 <span class="text-[10px] text-stone-400">Fonte: Base Pública Receita Federal</span>
                 <div class="flex items-center gap-2">
-                    <button onclick="openScriptFromCnpj()" id="btnCnpjToScript" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 hover:bg-stone-800 transition flex items-center gap-1.5 shadow-xs">
+                    <button onclick="openScriptFromCnpj()" id="btnCnpjToScript"
+                        class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 hover:bg-stone-800 transition flex items-center gap-1.5 shadow-xs">
                         <i class="ph-bold ph-phone-call"></i>
                         <span>Usar no Script</span>
                     </button>
-                    <button onclick="closeCnpjModal()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#F5F3EF] dark:bg-darkcard text-stone-700 dark:text-stone-300">
+                    <button onclick="closeCnpjModal()"
+                        class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#F5F3EF] dark:bg-darkcard text-stone-700 dark:text-stone-300">
                         Fechar
                     </button>
                 </div>

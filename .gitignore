@@ -33,7 +33,15 @@ static/screenshots/*.png
 static/screenshots/*.jpg
 static/screenshots/*.jpeg
 static/screenshots/*.webp
+app/static/screenshots/*.png
+app/static/screenshots/*.jpg
+app/static/screenshots/*.jpeg
+app/static/screenshots/*.webp
 !static/screenshots/.gitkeep
+!app/static/screenshots/.gitkeep
+
+# Temporary scratch and tests
+scratch/
 
 # Local OneDrive subfolder
 Aplica*/

@@ -263,6 +263,8 @@ function switchView(viewName) {
     // View containers
     const views = {
         mineracao: document.getElementById('viewMineracao'),
+        radar_cnpj: document.getElementById('viewRadarCnpj'),
+        instagram: document.getElementById('viewInstagram'),
         prospeccao: document.getElementById('viewProspeccao'),
         agenda: document.getElementById('viewAgenda'),
         metricas: document.getElementById('viewMetricas'),
@@ -271,6 +273,8 @@ function switchView(viewName) {
     // Sidebar items
     const sideNavs = {
         mineracao: document.getElementById('sideNavMineracao'),
+        radar_cnpj: document.getElementById('sideNavRadarCnpj'),
+        instagram: document.getElementById('sideNavInstagram'),
         prospeccao: document.getElementById('sideNavProspeccao'),
         agenda: document.getElementById('sideNavAgenda'),
         metricas: document.getElementById('sideNavMetricas'),
@@ -279,7 +283,9 @@ function switchView(viewName) {
     // Update Header Title
     const headerTitle = document.getElementById('headerViewTitle');
     const titleMap = {
-        mineracao: 'Robô de Mineração',
+        mineracao: 'Robô de Mineração Maps',
+        radar_cnpj: 'Radar de CNPJs Recém-Abertos',
+        instagram: 'Auditor de Links no Instagram',
         prospeccao: 'Central de Leads & Prospecção',
         agenda: 'Agenda de Reuniões & Follow-ups',
         metricas: 'Métricas & Funil Comercial'
@@ -2146,3 +2152,768 @@ async function enrichAllVisibleCnpjs() {
     showToast('Enriquecimento de CNPJs concluído!', 'success');
 }
 
+// ----------------------------------------------------
+// 19. RADAR DE CNPJS RECÉM-ABERTOS CONTROLLER
+// ----------------------------------------------------
+appState.radarResults = [];
+
+async function handleRadarCnpjScan(event) {
+    if (event) event.preventDefault();
+
+    const uf = (document.getElementById('radarUf')?.value || 'SP').trim();
+    const cidade = (document.getElementById('radarCidade')?.value || 'Sorocaba').trim();
+    const nicho = (document.getElementById('radarNicho')?.value || '').trim();
+    const periodo = parseInt(document.getElementById('radarPeriodo')?.value || '60', 10);
+
+    if (!cidade) {
+        showToast('Informe a cidade para pesquisar.', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('btnRadarScan');
+    const btnText = document.getElementById('btnRadarScanText');
+    const container = document.getElementById('radarResultsContainer');
+
+    if (btn) btn.disabled = true;
+    if (btnText) {
+        btnText.innerHTML = `
+            <span class="inline-flex items-center gap-1.5">
+                <div class="w-3 h-3 border-2 border-white dark:border-stone-900 border-t-transparent rounded-full animate-spin"></div>
+                <span>Varrendo Receita Federal...</span>
+            </span>
+        `;
+    }
+
+    if (container) {
+        container.innerHTML = `
+            <div class="glass-panel p-10 text-center rounded-xl space-y-3 border border-amber-200/50 dark:border-amber-900/30">
+                <div class="inline-block w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                <h4 class="font-bold text-xs text-stone-800 dark:text-stone-200 uppercase tracking-wider">
+                    Varrendo Registros Públicos da Receita Federal
+                </h4>
+                <p class="text-[11px] text-stone-500 max-w-md mx-auto">
+                    Identificando novas empresas abertas em <strong>${escapeHtml(cidade)}/${escapeHtml(uf)}</strong> nos últimos ${periodo} dias e extraindo quadro de sócios...
+                </p>
+            </div>
+        `;
+    }
+
+    try {
+        const res = await fetch('/api/radar_cnpj/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                uf,
+                cidade,
+                nicho,
+                periodo_dias: periodo,
+                limite: 20
+            })
+        });
+
+        const data = await res.json();
+        if (!data.success) {
+            showToast(data.error || 'Erro ao escanear CNPJs.', 'error');
+            if (container) {
+                container.innerHTML = `
+                    <div class="glass-panel p-8 text-center rounded-xl space-y-2 border border-dashed border-rose-300 dark:border-rose-900/50">
+                        <i class="ph-bold ph-warning-octagon text-3xl text-rose-500"></i>
+                        <h3 class="font-bold text-xs text-stone-800 dark:text-stone-200">Falha ao escanear empresas</h3>
+                        <p class="text-[11px] text-stone-500 max-w-md mx-auto">${escapeHtml(data.error || 'Tente novamente em instantes.')}</p>
+                    </div>
+                `;
+            }
+            return;
+        }
+
+        appState.radarResults = data.empresas || [];
+        renderRadarCnpjResults(data);
+        showToast(`${appState.radarResults.length} empresas identificadas com sucesso!`, 'success');
+    } catch (err) {
+        showToast('Falha na comunicação: ' + err.message, 'error');
+        if (container) {
+            container.innerHTML = `
+                <div class="glass-panel p-8 text-center rounded-xl space-y-2 border border-dashed border-rose-300 dark:border-rose-900/50">
+                    <i class="ph-bold ph-x-circle text-3xl text-rose-500"></i>
+                    <h3 class="font-bold text-xs text-stone-800 dark:text-stone-200">Erro de rede</h3>
+                    <p class="text-[11px] text-stone-500">${escapeHtml(err.message)}</p>
+                </div>
+            `;
+        }
+    } finally {
+        if (btn) btn.disabled = false;
+        if (btnText) btnText.innerHTML = 'Escanear CNPJs';
+    }
+}
+
+function renderRadarCnpjResults(data) {
+    const container = document.getElementById('radarResultsContainer');
+    if (!container) return;
+
+    const empresas = data.empresas || [];
+    if (empresas.length === 0) {
+        container.innerHTML = `
+            <div class="glass-panel p-8 text-center rounded-xl space-y-2 border border-dashed border-stone-300 dark:border-darkborder">
+                <i class="ph-bold ph-magnifying-glass text-3xl text-stone-400"></i>
+                <h3 class="font-bold text-xs text-stone-800 dark:text-stone-200">Nenhuma empresa recém-aberta encontrada</h3>
+                <p class="text-[11px] text-stone-500 max-w-md mx-auto">
+                    Não encontramos registros nos últimos ${data.parametros.periodo_dias} dias para estes filtros. Tente expandir para 90 ou 180 dias, ou pesquisar por outro ramo na cidade de ${escapeHtml(data.parametros.cidade)}.
+                </p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="glass-panel p-4 rounded-xl flex flex-wrap items-center justify-between gap-3 border border-stone-200 dark:border-darkborder shadow-xs">
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-xs font-bold text-stone-900 dark:text-white">
+                    ${empresas.length} empresa(s) recém-aberta(s) identificada(s)
+                </span>
+                <span class="text-[11px] text-stone-400">• ${escapeHtml(data.parametros.cidade)}/${escapeHtml(data.parametros.uf)}</span>
+                ${data.parametros.nicho ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300">${escapeHtml(data.parametros.nicho)}</span>` : ''}
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="importAllRadarLeads()" id="btnImportAllRadar" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-900 hover:bg-stone-800 text-white dark:bg-white dark:text-stone-900 dark:hover:bg-stone-100 transition shadow-xs flex items-center gap-1.5 cursor-pointer">
+                    <i class="ph-bold ph-download-simple"></i>
+                    <span>Importar Todas (${empresas.length})</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-3">
+            ${empresas.map((item, idx) => `
+                <div class="glass-panel p-4 rounded-xl border border-stone-200 dark:border-darkborder space-y-3 hover:border-stone-400 transition" id="radarCard_${idx}">
+                    <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5">
+                        <div class="space-y-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 flex items-center gap-1 font-mono">
+                                    <i class="ph-bold ph-calendar"></i>
+                                    <span>${escapeHtml(item.tag_tempo)}</span>
+                                </span>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${item.situacao === 'ATIVA' ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300' : 'bg-rose-100 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300'} flex items-center gap-1 font-mono">
+                                    <i class="ph-bold ${item.situacao === 'ATIVA' ? 'ph-check-circle' : 'ph-x-circle'}"></i>
+                                    <span>${escapeHtml(item.situacao)}</span>
+                                </span>
+                                <span class="text-[11px] font-mono font-bold text-stone-500">${escapeHtml(item.cnpj)}</span>
+                            </div>
+                            <h3 class="font-bold text-sm text-stone-900 dark:text-white leading-snug">${escapeHtml(item.razao_social)}</h3>
+                            ${item.nome_fantasia && item.nome_fantasia !== item.razao_social ? `<p class="text-xs text-stone-500 dark:text-stone-400 font-medium">Nome Fantasia: ${escapeHtml(item.nome_fantasia)}</p>` : ''}
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0 self-start">
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-bold font-mono bg-stone-100 dark:bg-darkcard2 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-darkborder">
+                                ${item.lead_score} pts
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1 text-xs">
+                        <div class="p-2.5 rounded-lg bg-[#FAF9F6] dark:bg-darkbg border border-stone-200/80 dark:border-darkborder/80 space-y-0.5">
+                            <span class="text-[10px] uppercase font-bold text-stone-400 flex items-center gap-1">
+                                <i class="ph-bold ph-users"></i> Sócios Registrados
+                            </span>
+                            <p class="font-medium text-stone-800 dark:text-stone-200 truncate" title="${escapeHtml(item.socios || 'Não informado')}">
+                                ${escapeHtml(item.socios || 'Não informado / Individual')}
+                            </p>
+                        </div>
+
+                        <div class="p-2.5 rounded-lg bg-[#FAF9F6] dark:bg-darkbg border border-stone-200/80 dark:border-darkborder/80 space-y-0.5">
+                            <span class="text-[10px] uppercase font-bold text-stone-400 flex items-center gap-1">
+                                <i class="ph-bold ph-briefcase"></i> Atividade / CNAE
+                            </span>
+                            <p class="font-medium text-stone-800 dark:text-stone-200 truncate" title="${escapeHtml(item.cnae || 'Serviços')}">
+                                ${escapeHtml(item.cnae || 'Serviços')}
+                            </p>
+                        </div>
+
+                        <div class="p-2.5 rounded-lg bg-[#FAF9F6] dark:bg-darkbg border border-stone-200/80 dark:border-darkborder/80 space-y-0.5">
+                            <span class="text-[10px] uppercase font-bold text-stone-400 flex items-center gap-1">
+                                <i class="ph-bold ph-map-pin"></i> Localização
+                            </span>
+                            <p class="font-medium text-stone-800 dark:text-stone-200 truncate" title="${escapeHtml(item.bairro ? `${item.bairro}, ${item.municipio}/${item.uf}` : `${item.municipio}/${item.uf}`)}">
+                                ${escapeHtml(item.bairro ? `${item.bairro}, ${item.municipio}/${item.uf}` : `${item.municipio}/${item.uf}`)}
+                            </p>
+                        </div>
+
+                        <div class="p-2.5 rounded-lg bg-[#FAF9F6] dark:bg-darkbg border border-stone-200/80 dark:border-darkborder/80 space-y-0.5">
+                            <span class="text-[10px] uppercase font-bold text-stone-400 flex items-center gap-1">
+                                <i class="ph-bold ph-phone"></i> Contato Telefônico
+                            </span>
+                            <p class="font-medium font-mono text-stone-800 dark:text-stone-200 truncate">
+                                ${item.phone ? escapeHtml(item.phone) : '<span class="text-stone-400 italic font-sans">Sem telefone público</span>'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Expandable Pitch Drawer -->
+                    <div id="radarPitchDrawer_${idx}" class="hidden p-3.5 rounded-lg bg-[#F5F3EF] dark:bg-darkcard2 border border-stone-200 dark:border-darkborder space-y-3">
+                        <div class="space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-stone-500 flex items-center gap-1">
+                                    <i class="ph-bold ph-phone-call text-amber-600"></i> Script de Ligação Fria (Parabéns pela Abertura)
+                                </span>
+                                <button onclick="navigator.clipboard.writeText(appState.radarResults[${idx}].cold_call_script); showToast('Script copiado!', 'success');" class="text-[10px] font-semibold text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-white flex items-center gap-1 cursor-pointer">
+                                    <i class="ph ph-copy"></i> Copiar
+                                </button>
+                            </div>
+                            <textarea readonly class="w-full text-xs font-mono p-2.5 rounded border border-stone-200 dark:border-darkborder bg-white dark:bg-darkbg text-stone-800 dark:text-stone-200 h-28 resize-none focus:outline-none">${escapeHtml(item.cold_call_script)}</textarea>
+                        </div>
+
+                        <div class="space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-stone-500 flex items-center gap-1">
+                                    <i class="ph-bold ph-whatsapp-logo text-emerald-600"></i> Mensagem WhatsApp (Oferta de Boas-Vindas R$ 1.000)
+                                </span>
+                                <button onclick="navigator.clipboard.writeText(appState.radarResults[${idx}].whatsapp_script); showToast('Mensagem copiada!', 'success');" class="text-[10px] font-semibold text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-white flex items-center gap-1 cursor-pointer">
+                                    <i class="ph ph-copy"></i> Copiar
+                                </button>
+                            </div>
+                            <textarea readonly class="w-full text-xs font-mono p-2.5 rounded border border-stone-200 dark:border-darkborder bg-white dark:bg-darkbg text-stone-800 dark:text-stone-200 h-28 resize-none focus:outline-none">${escapeHtml(item.whatsapp_script)}</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Card Actions -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-stone-100 dark:border-darkborder/60">
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleRadarPitch(${idx})" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-stone-100 dark:bg-darkborder text-stone-700 dark:text-stone-200 hover:bg-stone-200 dark:hover:bg-darkcard2 transition flex items-center gap-1.5 cursor-pointer">
+                                <i class="ph-bold ph-sparkle text-amber-500"></i>
+                                <span id="btnToggleRadarPitchText_${idx}">Ver Roteiro / Pitch</span>
+                            </button>
+
+                            ${item.phone && item.phone.length >= 10 ? `
+                                <a href="https://wa.me/55${item.phone.replace(/\\D/g, '')}?text=${encodeURIComponent(item.whatsapp_script)}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800/40 transition flex items-center gap-1">
+                                    <i class="ph-bold ph-whatsapp-logo"></i>
+                                    <span>WhatsApp</span>
+                                </a>
+                            ` : ''}
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button onclick="importRadarLead(${idx}, false)" id="btnImportRadar_${idx}" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-900 hover:bg-stone-800 text-white dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white transition shadow-xs flex items-center gap-1 cursor-pointer">
+                                <i class="ph-bold ph-plus-circle"></i>
+                                <span>Importar p/ Leads</span>
+                            </button>
+                            <button onclick="importRadarLead(${idx}, true)" class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-stone-300 dark:border-darkborder hover:border-stone-500 text-stone-800 dark:text-stone-200 bg-white dark:bg-darkcard transition flex items-center gap-1 cursor-pointer">
+                                <i class="ph-bold ph-arrow-square-out"></i>
+                                <span>Importar & Abrir Roteiro</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function toggleRadarPitch(idx) {
+    const drawer = document.getElementById(`radarPitchDrawer_${idx}`);
+    const textEl = document.getElementById(`btnToggleRadarPitchText_${idx}`);
+    if (drawer) {
+        drawer.classList.toggle('hidden');
+        if (textEl) {
+            textEl.innerText = drawer.classList.contains('hidden') ? 'Ver Roteiro / Pitch' : 'Ocultar Roteiro';
+        }
+    }
+}
+
+async function importRadarLead(idx, openScript = false) {
+    const item = appState.radarResults[idx];
+    if (!item) return;
+
+    if (item._imported) {
+        if (openScript && item._importedId) {
+            openScriptModal(item._importedId);
+        } else {
+            showToast('Esta empresa já foi importada!', 'info');
+        }
+        return;
+    }
+
+    const btn = document.getElementById(`btnImportRadar_${idx}`);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<div class="inline-block w-2.5 h-2.5 border border-stone-200 border-t-transparent rounded-full animate-spin"></div> <span>Importando...</span>`;
+    }
+
+    try {
+        const res = await fetch('/api/radar_cnpj/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(item)
+        });
+        const data = await res.json();
+        if (data.success) {
+            item._imported = true;
+            item._importedId = data.lead_id;
+            if (btn) {
+                btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white flex items-center gap-1 cursor-default';
+                btn.innerHTML = `<i class="ph-bold ph-check"></i> <span>Importado</span>`;
+            }
+            showToast(`${item.razao_social} adicionado à Central de Leads!`, 'success');
+            loadLeadsTable();
+            loadKpis();
+            if (openScript && data.lead_id) {
+                openScriptModal(data.lead_id);
+            }
+        } else {
+            showToast(data.error || 'Erro ao importar empresa.', 'error');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="ph-bold ph-plus-circle"></i> <span>Importar p/ Leads</span>`;
+            }
+        }
+    } catch (err) {
+        showToast('Erro de comunicação: ' + err.message, 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="ph-bold ph-plus-circle"></i> <span>Importar p/ Leads</span>`;
+        }
+    }
+}
+
+async function importAllRadarLeads() {
+    const toImport = (appState.radarResults || []).map((item, idx) => ({ item, idx })).filter(x => !x.item._imported);
+    if (toImport.length === 0) {
+        showToast('Todas as empresas visíveis já foram importadas!', 'info');
+        return;
+    }
+
+    const btn = document.getElementById('btnImportAllRadar');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<div class="inline-block w-3 h-3 border-2 border-stone-200 border-t-transparent rounded-full animate-spin"></div> <span>Importando...</span>`;
+    }
+
+    let count = 0;
+    for (const { item, idx } of toImport) {
+        try {
+            const res = await fetch('/api/radar_cnpj/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(item)
+            });
+            const data = await res.json();
+            if (data.success) {
+                item._imported = true;
+                item._importedId = data.lead_id;
+                const b = document.getElementById(`btnImportRadar_${idx}`);
+                if (b) {
+                    b.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white flex items-center gap-1 cursor-default';
+                    b.innerHTML = `<i class="ph-bold ph-check"></i> <span>Importado</span>`;
+                    b.disabled = true;
+                }
+                count++;
+            }
+        } catch (e) {
+            console.error('Erro ao importar lead em lote:', e);
+        }
+    }
+
+    if (btn) {
+        btn.innerHTML = `<i class="ph-bold ph-check"></i> <span>${count} Importadas</span>`;
+    }
+
+    showToast(`${count} empresa(s) importada(s) com sucesso para a Central de Leads!`, 'success');
+    loadLeadsTable();
+    loadKpis();
+}
+
+
+// ----------------------------------------------------
+// 20. AUDITOR DE PERFIS E LINKS NO INSTAGRAM CONTROLLER
+// ----------------------------------------------------
+appState.instagramResults = [];
+
+async function handleInstagramScan(event) {
+    if (event) event.preventDefault();
+
+    const nicho = (document.getElementById('instaNicho')?.value || 'Dentista').trim();
+    const cidade = (document.getElementById('instaCidade')?.value || 'Sorocaba').trim();
+    const limite = parseInt(document.getElementById('instaLimite')?.value || '15', 10);
+
+    if (!cidade || !nicho) {
+        showToast('Informe o nicho e a cidade.', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('btnInstaScan');
+    const btnText = document.getElementById('btnInstaScanText');
+    const container = document.getElementById('instaResultsContainer');
+
+    if (btn) btn.disabled = true;
+    if (btnText) {
+        btnText.innerHTML = `
+            <span class="inline-flex items-center gap-1.5">
+                <div class="w-3 h-3 border-2 border-white dark:border-stone-900 border-t-transparent rounded-full animate-spin"></div>
+                <span>Auditando perfis e links...</span>
+            </span>
+        `;
+    }
+
+    if (container) {
+        container.innerHTML = `
+            <div class="glass-panel p-10 text-center rounded-xl space-y-3 border border-rose-200/50 dark:border-rose-900/30">
+                <div class="inline-block w-8 h-8 border-3 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+                <h4 class="font-bold text-xs text-stone-800 dark:text-stone-200 uppercase tracking-wider">
+                    Minerando Perfis no Instagram & Auditando Saúde dos Links
+                </h4>
+                <p class="text-[11px] text-stone-500 max-w-md mx-auto">
+                    Localizando perfis comerciais de <strong>${escapeHtml(nicho)}</strong> em <strong>${escapeHtml(cidade)}</strong> e testando status HTTP e links na bio em tempo real...
+                </p>
+            </div>
+        `;
+    }
+
+    try {
+        const res = await fetch('/api/instagram/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                cidade,
+                nicho,
+                limite
+            })
+        });
+
+        const data = await res.json();
+        if (!data.success) {
+            showToast(data.error || 'Erro na auditoria do Instagram.', 'error');
+            if (container) {
+                container.innerHTML = `
+                    <div class="glass-panel p-8 text-center rounded-xl space-y-2 border border-dashed border-rose-300 dark:border-rose-900/50">
+                        <i class="ph-bold ph-warning-octagon text-3xl text-rose-500"></i>
+                        <h3 class="font-bold text-xs text-stone-800 dark:text-stone-200">Falha ao minerar Instagram</h3>
+                        <p class="text-[11px] text-stone-500 max-w-md mx-auto">${escapeHtml(data.error || 'Tente novamente em instantes.')}</p>
+                    </div>
+                `;
+            }
+            return;
+        }
+
+        appState.instagramResults = data.perfis || [];
+        renderInstagramResults(data);
+        showToast(`${appState.instagramResults.length} perfis auditados com sucesso!`, 'success');
+    } catch (err) {
+        showToast('Falha na comunicação: ' + err.message, 'error');
+        if (container) {
+            container.innerHTML = `
+                <div class="glass-panel p-8 text-center rounded-xl space-y-2 border border-dashed border-rose-300 dark:border-rose-900/50">
+                    <i class="ph-bold ph-x-circle text-3xl text-rose-500"></i>
+                    <h3 class="font-bold text-xs text-stone-800 dark:text-stone-200">Erro de rede</h3>
+                    <p class="text-[11px] text-stone-500">${escapeHtml(err.message)}</p>
+                </div>
+            `;
+        }
+    } finally {
+        if (btn) btn.disabled = false;
+        if (btnText) btnText.innerHTML = 'Auditar Links do Instagram';
+    }
+}
+
+function renderInstagramResults(data) {
+    const container = document.getElementById('instaResultsContainer');
+    if (!container) return;
+
+    const perfis = data.perfis || [];
+    if (perfis.length === 0) {
+        container.innerHTML = `
+            <div class="glass-panel p-8 text-center rounded-xl space-y-2 border border-dashed border-stone-300 dark:border-darkborder">
+                <i class="ph-bold ph-magnifying-glass text-3xl text-stone-400"></i>
+                <h3 class="font-bold text-xs text-stone-800 dark:text-stone-200">Nenhum perfil encontrado</h3>
+                <p class="text-[11px] text-stone-500 max-w-md mx-auto">
+                    Não encontramos perfis comerciais para ${escapeHtml(data.parametros.nicho)} em ${escapeHtml(data.parametros.cidade)}. Tente ajustar o nicho ou nome da cidade.
+                </p>
+            </div>
+        `;
+        return;
+    }
+
+    const stats = data.stats || { quebrados: 0, sem_link_ou_linktree: 0, ativos: 0 };
+
+    container.innerHTML = `
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-3">
+            <div class="glass-panel p-3 rounded-lg">
+                <span class="text-[10px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Perfis Auditados</span>
+                <div class="mt-0.5 text-xl font-bold font-mono text-stone-900 dark:text-white">${data.total}</div>
+            </div>
+            <div class="glass-panel p-3 rounded-lg border-rose-200 dark:border-rose-900/50 bg-rose-50/20 dark:bg-rose-950/10">
+                <span class="text-[10px] font-semibold text-rose-700 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1">
+                    <i class="ph-bold ph-link-break"></i> Links Quebrados (404/DNS)
+                </span>
+                <div class="mt-0.5 text-xl font-bold font-mono text-rose-800 dark:text-rose-300">${stats.quebrados}</div>
+            </div>
+            <div class="glass-panel p-3 rounded-lg">
+                <span class="text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                    <i class="ph-bold ph-tree-structure"></i> Sem Site / Linktree
+                </span>
+                <div class="mt-0.5 text-xl font-bold font-mono text-amber-800 dark:text-amber-300">${stats.sem_link_ou_linktree}</div>
+            </div>
+            <div class="glass-panel p-3 rounded-lg">
+                <span class="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                    <i class="ph-bold ph-check-circle"></i> Sites Ativos
+                </span>
+                <div class="mt-0.5 text-xl font-bold font-mono text-emerald-800 dark:text-emerald-300">${stats.ativos}</div>
+            </div>
+        </div>
+
+        ${stats.quebrados > 0 ? `
+            <div class="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 flex flex-wrap items-center justify-between gap-3 mb-3 shadow-xs">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-7 h-7 rounded-full bg-rose-100 dark:bg-rose-900/50 text-rose-600 flex items-center justify-center shrink-0">
+                        <i class="ph-bold ph-warning-octagon text-base"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-rose-950 dark:text-rose-200">
+                            ${stats.quebrados} perfil(is) com link fora do ar ou quebrado na bio!
+                        </h4>
+                        <p class="text-[11px] text-rose-800/80 dark:text-rose-300/80">
+                            Essas empresas estão perdendo clientes todos os dias. Oportunidade perfeita para a Landing Page de R$ 1.000.
+                        </p>
+                    </div>
+                </div>
+                <button onclick="importAllBrokenInstagramLeads()" id="btnImportBrokenInsta" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition shadow-xs flex items-center gap-1 shrink-0 cursor-pointer">
+                    <i class="ph-bold ph-download-simple"></i>
+                    <span>Importar Quebrados (${stats.quebrados})</span>
+                </button>
+            </div>
+        ` : ''}
+
+        <div class="grid grid-cols-1 gap-3">
+            ${perfis.map((item, idx) => {
+                let badgeClass = 'bg-stone-100 text-stone-700 dark:bg-darkcard2 dark:text-stone-300';
+                let badgeIcon = 'ph-link';
+                if (item.link_categoria === 'quebrado') {
+                    badgeClass = 'bg-rose-100 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 font-bold';
+                    badgeIcon = 'ph-link-break';
+                } else if (item.link_categoria === 'linktree' || item.link_categoria === 'apenas_whatsapp') {
+                    badgeClass = 'bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/60 font-medium';
+                    badgeIcon = 'ph-tree-structure';
+                } else if (item.link_categoria === 'ativo') {
+                    badgeClass = 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60 font-medium';
+                    badgeIcon = 'ph-check-circle';
+                }
+
+                return `
+                <div class="glass-panel p-4 rounded-xl border border-stone-200 dark:border-darkborder space-y-3 hover:border-stone-400 transition" id="instaCard_${idx}">
+                    <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5">
+                        <div class="space-y-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="px-2 py-0.5 rounded text-[10px] ${badgeClass} flex items-center gap-1 font-mono">
+                                    <i class="ph-bold ${badgeIcon}"></i>
+                                    <span>${escapeHtml(item.link_diagnostico)}</span>
+                                </span>
+                                <a href="${item.instagram_url}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 font-mono">
+                                    <i class="ph-bold ph-instagram-logo"></i> ${escapeHtml(item.handle)}
+                                </a>
+                            </div>
+                            <h3 class="font-bold text-sm text-stone-900 dark:text-white leading-snug">${escapeHtml(item.nome)}</h3>
+                            <p class="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed">${escapeHtml(item.bio_resumo)}</p>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0 self-start">
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-bold font-mono bg-stone-100 dark:bg-darkcard2 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-darkborder">
+                                ${item.lead_score} pts
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+                        <div class="p-2.5 rounded-lg bg-[#FAF9F6] dark:bg-darkbg border border-stone-200/80 dark:border-darkborder/80 space-y-0.5 sm:col-span-2">
+                            <span class="text-[10px] uppercase font-bold text-stone-400 flex items-center gap-1">
+                                <i class="ph-bold ph-link"></i> Link Cadastrado na Bio
+                            </span>
+                            <p class="font-medium font-mono text-stone-800 dark:text-stone-200 truncate" title="${escapeHtml(item.link_bio || 'Sem link')}">
+                                ${item.link_bio ? `<a href="${item.link_bio}" target="_blank" rel="noopener noreferrer" class="text-stone-700 dark:text-stone-300 hover:underline truncate">${escapeHtml(item.link_bio)}</a>` : '<span class="text-stone-400 italic font-sans">Nenhum link na bio</span>'}
+                            </p>
+                            <p class="text-[10.5px] text-stone-500 pt-0.5">${escapeHtml(item.link_detalhe)}</p>
+                        </div>
+
+                        <div class="p-2.5 rounded-lg bg-[#FAF9F6] dark:bg-darkbg border border-stone-200/80 dark:border-darkborder/80 space-y-0.5">
+                            <span class="text-[10px] uppercase font-bold text-stone-400 flex items-center gap-1">
+                                <i class="ph-bold ph-phone"></i> Telefone / WhatsApp
+                            </span>
+                            <p class="font-medium font-mono text-stone-800 dark:text-stone-200 truncate">
+                                ${item.phone ? escapeHtml(item.phone) : '<span class="text-stone-400 italic font-sans">Direct no Instagram</span>'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Expandable Pitch Drawer -->
+                    <div id="instaPitchDrawer_${idx}" class="hidden p-3.5 rounded-lg bg-[#F5F3EF] dark:bg-darkcard2 border border-stone-200 dark:border-darkborder space-y-3">
+                        <div class="space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-stone-500 flex items-center gap-1">
+                                    <i class="ph-bold ph-phone-call text-rose-600"></i> Script de Ligação / Abordagem
+                                </span>
+                                <button onclick="navigator.clipboard.writeText(appState.instagramResults[${idx}].cold_call_script); showToast('Script copiado!', 'success');" class="text-[10px] font-semibold text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-white flex items-center gap-1 cursor-pointer">
+                                    <i class="ph ph-copy"></i> Copiar
+                                </button>
+                            </div>
+                            <textarea readonly class="w-full text-xs font-mono p-2.5 rounded border border-stone-200 dark:border-darkborder bg-white dark:bg-darkbg text-stone-800 dark:text-stone-200 h-28 resize-none focus:outline-none">${escapeHtml(item.cold_call_script)}</textarea>
+                        </div>
+
+                        <div class="space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-stone-500 flex items-center gap-1">
+                                    <i class="ph-bold ph-whatsapp-logo text-emerald-600"></i> Mensagem WhatsApp / Direct (Oferta R$ 1.000)
+                                </span>
+                                <button onclick="navigator.clipboard.writeText(appState.instagramResults[${idx}].whatsapp_script); showToast('Mensagem copiada!', 'success');" class="text-[10px] font-semibold text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-white flex items-center gap-1 cursor-pointer">
+                                    <i class="ph ph-copy"></i> Copiar
+                                </button>
+                            </div>
+                            <textarea readonly class="w-full text-xs font-mono p-2.5 rounded border border-stone-200 dark:border-darkborder bg-white dark:bg-darkbg text-stone-800 dark:text-stone-200 h-28 resize-none focus:outline-none">${escapeHtml(item.whatsapp_script)}</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Card Actions -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-stone-100 dark:border-darkborder/60">
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleInstaPitch(${idx})" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-stone-100 dark:bg-darkborder text-stone-700 dark:text-stone-200 hover:bg-stone-200 dark:hover:bg-darkcard2 transition flex items-center gap-1.5 cursor-pointer">
+                                <i class="ph-bold ph-sparkle text-rose-500"></i>
+                                <span id="btnToggleInstaPitchText_${idx}">Ver Roteiro / Pitch</span>
+                            </button>
+
+                            <a href="${item.instagram_url}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-stone-100 dark:bg-darkcard2 text-stone-700 dark:text-stone-300 hover:bg-stone-200 border border-stone-200 dark:border-darkborder transition flex items-center gap-1">
+                                <i class="ph-bold ph-arrow-square-out"></i>
+                                <span>Abrir Perfil</span>
+                            </a>
+
+                            ${item.phone && item.phone.length >= 10 ? `
+                                <a href="https://wa.me/55${item.phone.replace(/\\D/g, '')}?text=${encodeURIComponent(item.whatsapp_script)}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800/40 transition flex items-center gap-1">
+                                    <i class="ph-bold ph-whatsapp-logo"></i>
+                                    <span>WhatsApp</span>
+                                </a>
+                            ` : ''}
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button onclick="importInstagramLead(${idx}, false)" id="btnImportInsta_${idx}" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-900 hover:bg-stone-800 text-white dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white transition shadow-xs flex items-center gap-1 cursor-pointer">
+                                <i class="ph-bold ph-plus-circle"></i>
+                                <span>Importar p/ Leads</span>
+                            </button>
+                            <button onclick="importInstagramLead(${idx}, true)" class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-stone-300 dark:border-darkborder hover:border-stone-500 text-stone-800 dark:text-stone-200 bg-white dark:bg-darkcard transition flex items-center gap-1 cursor-pointer">
+                                <i class="ph-bold ph-arrow-square-out"></i>
+                                <span>Importar & Abrir Roteiro</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+function toggleInstaPitch(idx) {
+    const drawer = document.getElementById(`instaPitchDrawer_${idx}`);
+    const textEl = document.getElementById(`btnToggleInstaPitchText_${idx}`);
+    if (drawer) {
+        drawer.classList.toggle('hidden');
+        if (textEl) {
+            textEl.innerText = drawer.classList.contains('hidden') ? 'Ver Roteiro / Pitch' : 'Ocultar Roteiro';
+        }
+    }
+}
+
+async function importInstagramLead(idx, openScript = false) {
+    const item = appState.instagramResults[idx];
+    if (!item) return;
+
+    if (item._imported) {
+        if (openScript && item._importedId) {
+            openScriptModal(item._importedId);
+        } else {
+            showToast('Este perfil já foi importado!', 'info');
+        }
+        return;
+    }
+
+    const btn = document.getElementById(`btnImportInsta_${idx}`);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<div class="inline-block w-2.5 h-2.5 border border-stone-200 border-t-transparent rounded-full animate-spin"></div> <span>Importando...</span>`;
+    }
+
+    try {
+        const res = await fetch('/api/instagram/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(item)
+        });
+        const data = await res.json();
+        if (data.success) {
+            item._imported = true;
+            item._importedId = data.lead_id;
+            if (btn) {
+                btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white flex items-center gap-1 cursor-default';
+                btn.innerHTML = `<i class="ph-bold ph-check"></i> <span>Importado</span>`;
+            }
+            showToast(`Perfil @${item.handle_raw} importado para a Central de Leads!`, 'success');
+            loadLeadsTable();
+            loadKpis();
+            if (openScript && data.lead_id) {
+                openScriptModal(data.lead_id);
+            }
+        } else {
+            showToast(data.error || 'Erro ao importar perfil.', 'error');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="ph-bold ph-plus-circle"></i> <span>Importar p/ Leads</span>`;
+            }
+        }
+    } catch (err) {
+        showToast('Erro de comunicação: ' + err.message, 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="ph-bold ph-plus-circle"></i> <span>Importar p/ Leads</span>`;
+        }
+    }
+}
+
+async function importAllBrokenInstagramLeads() {
+    const toImport = (appState.instagramResults || []).map((item, idx) => ({ item, idx }))
+        .filter(x => x.item.link_categoria === 'quebrado' && !x.item._imported);
+    if (toImport.length === 0) {
+        showToast('Nenhum link quebrado pendente de importação.', 'info');
+        return;
+    }
+
+    const btn = document.getElementById('btnImportBrokenInsta');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<div class="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div> <span>Importando...</span>`;
+    }
+
+    let count = 0;
+    for (const { item, idx } of toImport) {
+        try {
+            const res = await fetch('/api/instagram/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(item)
+            });
+            const data = await res.json();
+            if (data.success) {
+                item._imported = true;
+                item._importedId = data.lead_id;
+                const b = document.getElementById(`btnImportInsta_${idx}`);
+                if (b) {
+                    b.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white flex items-center gap-1 cursor-default';
+                    b.innerHTML = `<i class="ph-bold ph-check"></i> <span>Importado</span>`;
+                    b.disabled = true;
+                }
+                count++;
+            }
+        } catch (e) {
+            console.error('Erro ao importar perfil:', e);
+        }
+    }
+
+    if (btn) {
+        btn.innerHTML = `<i class="ph-bold ph-check"></i> <span>${count} Importados</span>`;
+    }
+
+    showToast(`${count} leads com link quebrado importados com sucesso!`, 'success');
+    loadLeadsTable();
+    loadKpis();
+}

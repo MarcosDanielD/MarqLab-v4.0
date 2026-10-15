@@ -3,6 +3,24 @@
   Paleta: Off-White / Bege Linho / Carvão Nobre / Editorial Clean
 */
 
+/* High-Contrast Universal Text Selection (Funciona perfeitamente no Dark e Light mode) */
+::selection {
+    background-color: #FCD34D !important; /* Amber-300 */
+    color: #1C1917 !important; /* Stone-900 */
+}
+::-moz-selection {
+    background-color: #FCD34D !important;
+    color: #1C1917 !important;
+}
+* {
+    -webkit-user-select: text;
+    user-select: text;
+}
+button, a, input, select, textarea {
+    -webkit-user-select: auto;
+    user-select: auto;
+}
+
 :root {
     --bg-canvas: #FAF9F6;
     --bg-surface: #FFFFFF;
@@ -214,7 +232,7 @@ body.sidebar-collapsed #mainWrapper {
 .sidebar-nav-item {
     display: flex;
     align-items: center;
-    gap: 9px;
+    gap: 8px;
     width: 100%;
     padding: 6px 9px;
     border-radius: 8px;
@@ -223,6 +241,11 @@ body.sidebar-collapsed #mainWrapper {
     color: var(--text-secondary);
     transition: all 0.12s ease;
     border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.sidebar-nav-item span {
+    white-space: nowrap;
 }
 
 .sidebar-nav-item i {
