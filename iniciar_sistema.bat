@@ -23,7 +23,14 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-:: 2. Verifica se o ambiente virtual existe
+:: 2. Verifica atualizacoes de codigo no GitHub
+where git >nul 2>nul
+if %ERRORLEVEL% equ 0 (
+    echo [INFO] Sincronizando codigo com o GitHub...
+    git pull origin main --quiet
+)
+
+:: 3. Verifica se o ambiente virtual existe
 if not exist ".venv" (
     echo [INFO] Primeiro uso detectado neste computador!
     echo [INFO] Configurando ambiente local... Aguarde alguns instantes...
