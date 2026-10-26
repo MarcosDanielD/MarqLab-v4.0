@@ -792,10 +792,10 @@ def touch_operator_login(op_id: int):
 
 
 def get_operator_by_name(name: str) -> Optional[Dict[str, Any]]:
-    """Fetches an operator by their name."""
+    """Fetches an operator by their name (case-insensitive)."""
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM operators WHERE name = ? AND active = 1", (name.strip(),))
+    cursor.execute("SELECT * FROM operators WHERE lower(name) = lower(?) AND active = 1", ((name or "").strip(),))
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
